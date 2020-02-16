@@ -7,7 +7,7 @@
 [![](https://img.shields.io/badge/platform-win64-lightgrey)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/v/release/blackboxo/AutoDeleteFileOnPCWechat)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 
 [国内地址 - 点击下载](
-https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/autodelete.exe)
+https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/%E5%BE%AE%E4%BF%A1%E6%95%B0%E6%8D%AE%E8%87%AA%E5%8A%A8%E5%88%A0%E9%99%A4%E5%B7%A5%E5%85%B7.exe)
 
 [Github Release - 点击下载](
 https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
