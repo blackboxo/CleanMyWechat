@@ -4,15 +4,20 @@
 
 删除过程中如出现转圈等现象请耐心等待，删除结束将会有提示。
 
-[点击下载](
+[![](https://img.shields.io/badge/platform-win64-lightgrey)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
+
+[![](https://img.shields.io/github/v/release/blackboxo/AutoDeleteFileOnPCWechat)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
+
+[国内地址 - 点击下载](
 https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/autodelete.exe)
+
+[Github Release - 点击下载](
+https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 
 ## 特性
 1. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
 2. 自由设置需要删除的文件的距离时间，默认 24 个月；
 3. 删除后的文件放置在回收站中，检查后自行清空，防止删错需要的文件；
-
-
 
 ## 运行截图
 
@@ -23,8 +28,6 @@ https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/autodelete.exe)
 下载两年时间，微信一个软件就占用多达 33.5 G 存储空间。其中大部分都是与自己无关的各大群聊中的文件、视频、图片等内容，且很久以前的文件仍旧存在电脑中。
 
 ![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/20200213142805.png)
-
-
 
 ## 待改进
 
