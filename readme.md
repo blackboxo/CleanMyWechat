@@ -2,7 +2,9 @@
 
 自动删除 PC 端微信自动下载的大量文件、视频、图片等数据内容，解放你的空间。
 
-删除过程中如出现转圈等现象请耐心等待，删除结束将会有提示。
+该工具不会删除文字的聊天记录，请放心使用。
+
+程序启动较慢，删除过程中如出现转圈等现象请耐心等待，删除结束将会有提示。
 
 [![](https://img.shields.io/badge/platform-win64-lightgrey)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/v/release/blackboxo/AutoDeleteFileOnPCWechat)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 
