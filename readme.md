@@ -32,3 +32,4 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 - [ ] 运行占用较多磁盘，待优化
 - [ ] 增加直接删除文件和文件夹选项，不放入回收站
 - [ ] 增加中途暂停及停止
+- [ ] 支持 Mac 平台
