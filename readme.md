@@ -4,6 +4,9 @@
 
 删除过程中如出现转圈等现象请耐心等待，删除结束将会有提示。
 
+[点击下载](
+https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/autodelete.exe)
+
 ## 特性
 1. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
 2. 自由设置需要删除的文件的距离时间，默认 24 个月；
@@ -13,7 +16,7 @@
 
 ## 运行截图
 
-
+![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/20200216161434.png)
 
 ## 微信现状
 
