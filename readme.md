@@ -4,9 +4,7 @@
 
 删除过程中如出现转圈等现象请耐心等待，删除结束将会有提示。
 
-[![](https://img.shields.io/badge/platform-win64-lightgrey)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
-
-[![](https://img.shields.io/github/v/release/blackboxo/AutoDeleteFileOnPCWechat)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
+[![](https://img.shields.io/badge/platform-win64-lightgrey)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)[![](https://img.shields.io/github/v/release/blackboxo/AutoDeleteFileOnPCWechat)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 
 [国内地址 - 点击下载](
 https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/autodelete.exe)
