@@ -19,6 +19,16 @@ https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/%E5%BE%AE%E4%BF%A1%E6%
 [Github Release - 点击下载](
 https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 
+**报病毒了怎么办？**
+
+属于 Windows Defender 的误报，我正在解决。软件本身没有问题，已开源，如有 Python 3 环境也可自己直接执行。
+
+暂时的解决办法：
+
+打开设置，搜索“病毒和威胁防护”->“病毒和威胁防护”设置->管理设置->关闭“实时保护”->重新下载软件打开->使用完成后自行打开实时保护。
+
+![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/20200217205308.png)
+
 ## 特性
 1. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
 2. 自由设置需要删除的文件的距离时间，默认 24 个月；
