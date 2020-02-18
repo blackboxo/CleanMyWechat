@@ -1,6 +1,6 @@
 # AutoDeleteFileOnPCWechat
 
-[![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/banner.png)](https://www.mylittlefox.art)
+![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/banner.png)
 
 [![](https://img.shields.io/badge/platform-win64-lightgrey)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/v/release/blackboxo/AutoDeleteFileOnPCWechat)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/downloads/blackboxo/AutoDeleteFileOnPCWechat/total)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 
