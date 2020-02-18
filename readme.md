@@ -1,5 +1,7 @@
 # AutoDeleteFileOnPCWechat
 
+[![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/banner.png)](https://www.mylittlefox.art)
+
 [![](https://img.shields.io/badge/platform-win64-lightgrey)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/v/release/blackboxo/AutoDeleteFileOnPCWechat)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/downloads/blackboxo/AutoDeleteFileOnPCWechat/total)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 
 自动删除 PC 端微信自动下载的大量文件、视频、图片等数据内容，解放你的空间。
@@ -12,22 +14,11 @@
 
 点击 PC 端微信左下角的按钮 -> 设置 -> 通用设置 -> 打开文件夹 -> 复制文件资源管理器的完整路径
 
-
 [国内地址 - 点击下载](
 https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/%E5%BE%AE%E4%BF%A1%E6%95%B0%E6%8D%AE%E8%87%AA%E5%8A%A8%E5%88%A0%E9%99%A4%E5%B7%A5%E5%85%B7.exe)
 
 [Github Release - 点击下载](
 https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
-
-**报病毒了怎么办？**
-
-属于 Windows Defender 的误报，我正在解决。软件本身没有问题，已开源，如有 Python 3 环境也可自己直接执行。
-
-暂时的解决办法：
-
-打开设置，搜索“病毒和威胁防护”->“病毒和威胁防护”设置->管理设置->关闭“实时保护”->重新下载软件打开->使用完成后自行打开实时保护。
-
-![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/20200217205308.png)
 
 ## 特性
 1. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
@@ -50,3 +41,7 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 - [ ] 增加直接删除文件和文件夹选项，不放入回收站
 - [ ] 增加中途暂停及停止
 - [ ] 支持 Mac 平台
+
+## 链接
+
+图标及 Banner 设计：[@mylittlefox](https://www.mylittlefox.art)
