@@ -52,8 +52,10 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0/Aut
 - [ ] 增加中途暂停及停止
 - [x] 支持 Mac 平台(Mac 版本自带清除缓存，不再开发该平台)
 - [x] 支持 Microsoft Store 下载的微信 for Windows 版本
-- [ ] 支持 Microsoft Store 下载的微信 UWP 版本
+- [ ] 支持 Microsoft Store 下载的微信 UWP 版本(文件存储路径的命名规则尚不明确，有需求再开发)
 
 ## 致谢
 
-图标及 Banner 设计：[@mylittlefox](https://www.mylittlefox.art)
+[@mylittlefox](https://www.mylittlefox.art)：图标及 Banner 设计
+
+[@Gears](https://refun.eu.org)：提供微信 for Windows 版本的文件目录树及测试支持
