@@ -8,17 +8,27 @@
 
 该工具不会删除文字的聊天记录，请放心使用。请给个 **Star** 吧，非常感谢！
 
+**现已经支持微信官网下载的 PC 版本，和 Microsoft Store 下载的微信 for Windows 版本。**
+
 程序启动较慢，删除过程中如出现转圈等现象请耐心等待，删除结束将会有提示。
 
-**如何找到微信文件的存储路径：**
-
-点击 PC 端微信左下角的按钮 -> 设置 -> 通用设置 -> 打开文件夹 -> 复制文件资源管理器的完整路径
+**微信官网下载的 PC 版本：**
 
 [国内地址 - 点击下载](
 https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/%E5%BE%AE%E4%BF%A1%E6%95%B0%E6%8D%AE%E8%87%AA%E5%8A%A8%E5%88%A0%E9%99%A4%E5%B7%A5%E5%85%B7.exe)
 
 [Github Release - 点击下载](
-https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
+https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0/AutoDeleteFileOnPCWechat.exe)
+
+**Microsoft Store 下载的微信 for Windows 版本：**
+
+[国内地址 - 点击下载](https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/%E5%BE%AE%E4%BF%A1forWindows%E6%95%B0%E6%8D%AE%E8%87%AA%E5%8A%A8%E5%88%A0%E9%99%A4%E5%B7%A5%E5%85%B7.exe)
+
+[Github Release - 点击下载](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0-forWindows/forWindows.exe)
+
+**如何找到微信文件的存储路径：**
+
+点击 PC 端微信左下角的按钮 -> 设置 -> 通用设置 -> 打开文件夹 -> 复制文件资源管理器的完整路径
 
 ## 特性
 1. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
@@ -40,8 +50,10 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 - [ ] 运行占用较多磁盘，待优化
 - [ ] 增加直接删除文件和文件夹选项，不放入回收站
 - [ ] 增加中途暂停及停止
-- [ ] 支持 Mac 平台
+- [x] 支持 Mac 平台(Mac 版本自带清除缓存，不再开发该平台)
+- [x] 支持 Microsoft Store 下载的微信 for Windows 版本
+- [ ] 支持 Microsoft Store 下载的微信 UWP 版本
 
-## 链接
+## 致谢
 
 图标及 Banner 设计：[@mylittlefox](https://www.mylittlefox.art)
