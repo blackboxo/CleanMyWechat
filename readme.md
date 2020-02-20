@@ -8,9 +8,9 @@
 
 该工具不会删除文字的聊天记录，请放心使用。请给个 **Star** 吧，非常感谢！
 
-**现已经支持微信官网下载的 PC 版本，和 Microsoft Store 下载的微信 for Windows 版本。**
-
 程序启动较慢，删除过程中如出现转圈等现象请耐心等待，删除结束将会有提示。
+
+**现已经支持微信官网下载的 PC 版本，和 Microsoft Store 下载的微信 for Windows 版本。**
 
 **微信官网下载的 PC 版本：**
 
@@ -47,6 +47,7 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0/Aut
 
 ## 待改进
 
+- [ ] 更改为以天为单位
 - [ ] 运行占用较多磁盘，待优化
 - [ ] 增加直接删除文件和文件夹选项，不放入回收站
 - [ ] 增加中途暂停及停止
@@ -59,3 +60,11 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0/Aut
 [@mylittlefox](https://www.mylittlefox.art)：图标及 Banner 设计
 
 [@Gears](https://refun.eu.org)：提供微信 for Windows 版本的文件目录树及测试支持
+
+## 开发者
+
+微博：@BlackBoXo
+
+邮箱：18110240013@fudan.edu.cn
+
+Blog：https://www.blackboxo.top/
