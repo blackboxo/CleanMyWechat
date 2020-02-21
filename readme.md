@@ -15,14 +15,14 @@
 **微信官网下载的 PC 版本：**
 
 [国内地址 - 点击下载](
-https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/%E5%BE%AE%E4%BF%A1%E6%95%B0%E6%8D%AE%E8%87%AA%E5%8A%A8%E5%88%A0%E9%99%A4%E5%B7%A5%E5%85%B7.exe)
+https://www.lanzous.com/i9k041e)
 
 [Github Release - 点击下载](
 https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0/AutoDeleteFileOnPCWechat.exe)
 
 **Microsoft Store 下载的微信 for Windows 版本：**
 
-[国内地址 - 点击下载](https://deletefileonpcwechat.oss-cn-shanghai.aliyuncs.com/%E5%BE%AE%E4%BF%A1forWindows%E6%95%B0%E6%8D%AE%E8%87%AA%E5%8A%A8%E5%88%A0%E9%99%A4%E5%B7%A5%E5%85%B7.exe)
+[国内地址 - 点击下载](https://www.lanzous.com/i9k03li)
 
 [Github Release - 点击下载](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0-forWindows/forWindows.exe)
 
@@ -48,12 +48,10 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0/Aut
 ## 待改进
 
 - [ ] 更改为以天为单位
-- [ ] 运行占用较多磁盘，待优化
-- [ ] 增加直接删除文件和文件夹选项，不放入回收站
-- [ ] 增加中途暂停及停止
+- [ ] 增加同时多个微信路径的支持，并保存路径
 - [x] 支持 Mac 平台(Mac 版本自带清除缓存，不再开发该平台)
 - [x] 支持 Microsoft Store 下载的微信 for Windows 版本
-- [ ] 支持 Microsoft Store 下载的微信 UWP 版本(文件存储路径的命名规则尚不明确，有需求再开发)
+- [ ] 支持 Microsoft Store 下载的微信 UWP 版本
 
 ## 致谢
 
