@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow
-#from autoui import *
-from autouiuwp import *
+from autoui import *
+#from autouiuwp import *
 
 
 class MyWindow(QMainWindow, Ui_MainWin):

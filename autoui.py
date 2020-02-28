@@ -21,8 +21,9 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import (QApplication, QDialog,
                              QProgressBar, QPushButton)
 
+from selectVersion import *
 from deleteThread import *
-
+from loadPath import *
 
 class Ui_MainWin(object):
     def setupUi(self, MainWin):
@@ -37,6 +38,10 @@ class Ui_MainWin(object):
         self.lineEdit = QtWidgets.QLineEdit(self.centralwidget)
         self.lineEdit.setMinimumSize(QtCore.QSize(0, 0))
         self.lineEdit.setText("")
+        self.loadpath = loadPath()
+        temp = self.loadpath.load()
+        if temp != '':
+            self.lineEdit.setText(temp)
         self.lineEdit.setObjectName("lineEdit")
         self.gridLayout.addWidget(self.lineEdit, 0, 1, 1, 2)
 
@@ -172,41 +177,60 @@ class Ui_MainWin(object):
     def confirm(self):
         self.fileNum = 0
         self.dirNum = 0
-        if self.pushButton.isEnabled() and self.lineEdit.text() != '':
-            self.path = self.lineEdit.text()
-
+        if self.pushButton.isEnabled():
             self.month = int(self.lineEdit_2.text())
             self.picCacheCheck = self.checkBox.isChecked()
             self.fileCheck = self.checkBox_2.isChecked()
             self.picCheck = self.checkBox_3.isChecked()
             self.videoCheck = self.checkBox_4.isChecked()
 
-            self.getFileNum(self.path, self.month, self.picCacheCheck, self.fileCheck, self.picCheck, self.videoCheck)
-            # 增加0边界处理
-            if self.fileNum + self.dirNum == 0:
-                out = "本次共清理文件" + str(self.fileNum) + "个。"
-                QMessageBox.information(
-                    self,  # 使用infomation信息框
-                    "清理完成",
-                    out)
-                return
-            self.onButtonClick()
+            # 输入自定义路径
+            if self.lineEdit.text() != '':
+                self.path = self.lineEdit.text()
+                if not os.path.exists(self.path):
+                    QMessageBox.critical(
+                        self,  # 使用infomation信息框
+                        "缺失路径",
+                        "请输入微信文件的存储路径")
+                    return
+                self.loadpath.storage(self.path)
+                self.getFileNum(self.path, self.month, self.picCacheCheck, self.fileCheck, self.picCheck,
+                                self.videoCheck)
+                # 增加0边界处理
+                if self.fileNum + self.dirNum == 0:
+                    out = "本次共清理文件" + str(self.fileNum) + "个。"
+                    QMessageBox.information(
+                        self,  # 使用infomation信息框
+                        "清理完成",
+                        out)
+                    return
+                self.onButtonClick()
+            # 使用默认安装路径
+            else:
+                self.selectVersion = selectVersion()
+                # 获取当前版本
+                self.version = self.selectVersion.getAllPath()
+                # 三个版本的路径均未找到， 则用户使用的应该是自定义路径
+                if len(self.version)==0:
+                    QMessageBox.critical(
+                        self,  # 使用infomation信息框
+                        "默认路径错误",
+                        "您的微信使用的自定义路径，请输入自定义路径。")
+                    return
+                for value in self.version:
+                    self.getFileNum(value, self.month, self.picCacheCheck, self.fileCheck, self.picCheck,
+                                    self.videoCheck)
+                if self.fileNum + self.dirNum == 0:
+                    out = "本次共清理文件" + str(self.fileNum) + "个。"
+                    QMessageBox.information(
+                        self,  # 使用infomation信息框
+                        "清理完成",
+                        out)
+                    return
+                for value in self.version:
+                    self.path = value
+                    self.onButtonClick()
 
-            # if picCacheCheck:
-            #     self.deleteFile(path, month, "piccache")
-            # if fileCheck:
-            #     self.deleteFile(path, month, "file")
-            # if picCheck:
-            #     self.deleteFile(path, month, "pic")
-            # if videoCheck:
-            #     self.deleteFile(path, month, "video")
-
-            # out = "本次共清理文件" + str(self.fileNum) + "个，文件夹" + str(
-            #     self.dirNum) + "个。请前往回收站检查并清空。"
-            # QMessageBox.information(
-            #     self,  #使用infomation信息框
-            #     "清理完成",
-            #     out)
         elif self.lineEdit_2.text() == '':
             QMessageBox.critical(
                 self,  #使用infomation信息框  
@@ -217,67 +241,6 @@ class Ui_MainWin(object):
                 self,  #使用infomation信息框  
                 "缺失路径",
                 "请输入微信文件的存储路径")
-
-    # def deleteFile(self, path, month, type):
-    #
-    #     # I've explicitly declared my path as being in Windows format, so I can use forward slashes in it.
-    #     dirname = PureWindowsPath(path)
-    #     # Convert path to the right format for the current operating system
-    #     correct_path = Path(dirname)
-    #     now = datetime.datetime.now()
-    #     if type == "piccache":
-    #         path_one = correct_path / 'Attachment'
-    #         path_two = correct_path / 'FileStorage/Cache'
-    #     elif type == "file":
-    #         path_one = correct_path / 'Files'
-    #         path_two = correct_path / 'FileStorage/File'
-    #     elif type == "pic":
-    #         path_one = correct_path / 'Image/Image'
-    #         path_two = correct_path / 'FileStorage/Image'
-    #     elif type == "video":
-    #         path_one = correct_path / 'Video'
-    #         path_two = correct_path / 'FileStorage/Video'
-    #
-    #     # Delete path_one
-    #     if os.path.exists(path_one):
-    #         list = os.listdir(path_one)
-    #         filelist = []
-    #         for i in range(0, len(list)):
-    #             file_path = os.path.join(path_one, list[i])
-    #             if os.path.isfile(file_path):
-    #                 filelist.append(list[i])
-    #         for i in range(0, len(filelist)):
-    #             file_path = os.path.join(path_one, filelist[i])
-    #             if os.path.isdir(file_path):
-    #                 continue
-    #             timestamp = datetime.datetime.fromtimestamp(
-    #                 os.path.getmtime(file_path))
-    #             r = relativedelta.relativedelta(now, timestamp)
-    #             if r.years * 12 + r.months > month:
-    #                 send2trash(file_path)
-    #                 self.fileNum = self.fileNum + 1
-    #                 # print("delete:", file_path)
-    #
-    #     # Delete path_two
-    #     if os.path.exists(path_two):
-    #         osdir = os.listdir(path_two)
-    #         dirlist = []
-    #         for i in range(0, len(osdir)):
-    #             file_path = os.path.join(path_two, osdir[i])
-    #             if os.path.isdir(file_path):
-    #                 dirlist.append(osdir[i])
-    #         for i in range(0, len(dirlist)):
-    #             file_path = os.path.join(path_two, dirlist[i])
-    #             if os.path.isfile(file_path):
-    #                 continue
-    #             if re.match('\d{4}(\-)\d{2}', dirlist[i]) != None:
-    #                 cyear = int(dirlist[i].split('-', 1)[0])
-    #                 cmonth = int(dirlist[i].split('-', 1)[1])
-    #                 diff = (now.year - cyear) * 12 + now.month - cmonth
-    #                 if diff > month:
-    #                     send2trash(file_path)
-    #                     self.dirNum = self.dirNum + 1
-    #                     # print("delete:", file_path)
 
     def retranslateUi(self, MainWin):
         _translate = QtCore.QCoreApplication.translate
