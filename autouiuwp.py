@@ -12,7 +12,9 @@ from dateutil import relativedelta
 from send2trash import send2trash
 from pathlib import Path, PureWindowsPath
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMessageBox  #QmessageBox是弹出框函数
+from PyQt5.QtWidgets import QMessageBox, QProgressBar  # QmessageBox是弹出框函数
+
+from deleteThread import *
 
 
 class Ui_MainWin(object):
@@ -29,6 +31,16 @@ class Ui_MainWin(object):
         self.lineEdit.setPlaceholderText("")
         self.lineEdit.setObjectName("lineEdit")
         self.gridLayout.addWidget(self.lineEdit, 0, 1, 1, 2)
+
+        self.lineEdit_3 = QtWidgets.QLineEdit(self.centralwidget)
+        self.lineEdit_3.setObjectName("lineEdit_3")
+        self.gridLayout.addWidget(self.lineEdit_3, 1, 1, 1, 2)
+
+        self.lineEdit_2 = QtWidgets.QLineEdit(self.centralwidget)
+        self.lineEdit_2.setObjectName("lineEdit_2")
+        self.gridLayout.addWidget(self.lineEdit_2, 2, 1, 1, 1)
+
+
         self.checkBox = QtWidgets.QCheckBox(self.centralwidget)
         self.checkBox.setEnabled(True)
         font = QtGui.QFont()
@@ -39,6 +51,38 @@ class Ui_MainWin(object):
         self.checkBox.setChecked(True)
         self.checkBox.setObjectName("checkBox")
         self.gridLayout.addWidget(self.checkBox, 3, 1, 1, 2)
+
+        self.checkBox_2 = QtWidgets.QCheckBox(self.centralwidget)
+        font = QtGui.QFont()
+        font.setPointSize(11)
+        font.setBold(True)
+        font.setWeight(75)
+        self.checkBox_2.setFont(font)
+        self.checkBox_2.setChecked(True)
+        self.checkBox_2.setObjectName("checkBox_2")
+        self.gridLayout.addWidget(self.checkBox_2, 4, 1, 1, 2)
+
+        self.checkBox_3 = QtWidgets.QCheckBox(self.centralwidget)
+        self.checkBox_3.setMinimumSize(QtCore.QSize(0, 0))
+        font = QtGui.QFont()
+        font.setPointSize(11)
+        font.setBold(True)
+        font.setWeight(75)
+        self.checkBox_3.setFont(font)
+        self.checkBox_3.setChecked(True)
+        self.checkBox_3.setObjectName("checkBox_3")
+        self.gridLayout.addWidget(self.checkBox_3, 5, 1, 1, 2)
+
+        self.checkBox_4 = QtWidgets.QCheckBox(self.centralwidget)
+        font = QtGui.QFont()
+        font.setPointSize(11)
+        font.setBold(True)
+        font.setWeight(75)
+        self.checkBox_4.setFont(font)
+        self.checkBox_4.setChecked(True)
+        self.checkBox_4.setObjectName("checkBox_4")
+        self.gridLayout.addWidget(self.checkBox_4, 6, 1, 1, 2)
+
         self.label_4 = QtWidgets.QLabel(self.centralwidget)
         font = QtGui.QFont()
         font.setFamily("宋体")
@@ -87,46 +131,28 @@ class Ui_MainWin(object):
         self.label.setTextFormat(QtCore.Qt.AutoText)
         self.label.setObjectName("label")
         self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
-        self.checkBox_4 = QtWidgets.QCheckBox(self.centralwidget)
+
         font = QtGui.QFont()
         font.setPointSize(11)
         font.setBold(True)
         font.setWeight(75)
-        self.checkBox_4.setFont(font)
-        self.checkBox_4.setChecked(True)
-        self.checkBox_4.setObjectName("checkBox_4")
-        self.gridLayout.addWidget(self.checkBox_4, 6, 1, 1, 2)
-        self.lineEdit_2 = QtWidgets.QLineEdit(self.centralwidget)
-        self.lineEdit_2.setObjectName("lineEdit_2")
-        self.gridLayout.addWidget(self.lineEdit_2, 2, 1, 1, 1)
+        self.progress = QProgressBar(self)
+        self.gridLayout.addWidget(self.progress, 6, 0)
+        self.progress.setMaximum(100)
+
+
+
         self.label_6 = QtWidgets.QLabel(self.centralwidget)
         self.label_6.setAlignment(QtCore.Qt.AlignCenter)
         self.label_6.setOpenExternalLinks(True)
         self.label_6.setObjectName("label_6")
         self.gridLayout.addWidget(self.label_6, 10, 0, 1, 3)
-        self.checkBox_3 = QtWidgets.QCheckBox(self.centralwidget)
-        self.checkBox_3.setMinimumSize(QtCore.QSize(0, 0))
-        font = QtGui.QFont()
-        font.setPointSize(11)
-        font.setBold(True)
-        font.setWeight(75)
-        self.checkBox_3.setFont(font)
-        self.checkBox_3.setChecked(True)
-        self.checkBox_3.setObjectName("checkBox_3")
-        self.gridLayout.addWidget(self.checkBox_3, 5, 1, 1, 2)
+
         self.label_7 = QtWidgets.QLabel(self.centralwidget)
         self.label_7.setText("")
         self.label_7.setObjectName("label_7")
         self.gridLayout.addWidget(self.label_7, 9, 0, 1, 1)
-        self.checkBox_2 = QtWidgets.QCheckBox(self.centralwidget)
-        font = QtGui.QFont()
-        font.setPointSize(11)
-        font.setBold(True)
-        font.setWeight(75)
-        self.checkBox_2.setFont(font)
-        self.checkBox_2.setChecked(True)
-        self.checkBox_2.setObjectName("checkBox_2")
-        self.gridLayout.addWidget(self.checkBox_2, 4, 1, 1, 2)
+
         self.label_8 = QtWidgets.QLabel(self.centralwidget)
         font = QtGui.QFont()
         font.setBold(True)
@@ -134,9 +160,7 @@ class Ui_MainWin(object):
         self.label_8.setFont(font)
         self.label_8.setObjectName("label_8")
         self.gridLayout.addWidget(self.label_8, 1, 0, 1, 1)
-        self.lineEdit_3 = QtWidgets.QLineEdit(self.centralwidget)
-        self.lineEdit_3.setObjectName("lineEdit_3")
-        self.gridLayout.addWidget(self.lineEdit_3, 1, 1, 1, 2)
+
         self.pushButton.clicked.connect(self.confirm)
         self.label_6.setOpenExternalLinks(True)
         MainWin.setCentralWidget(self.centralwidget)
@@ -163,68 +187,80 @@ class Ui_MainWin(object):
                 "缺少月份",
                 "请输入需要删除多久以前的文件")
         elif self.pushButton.isEnabled():
-            path = 'C:\\Users\\' + self.lineEdit.text(
+            self.path = 'C:\\Users\\' + self.lineEdit.text(
             ) + '\\AppData\\Local\\Packages\\TencentWeChatLimited.forWindows10_sdtnhv12zgd7a\\LocalCache\\Roaming\\Tencent\\WeChatAppStore\\WeChatAppStore Files\\' + self.lineEdit_3.text(
             )
-            print(path)
-            if not os.path.exists(path):
+            print(self.path)
+            if not os.path.exists(self.path):
                 QMessageBox.critical(
                     self,  #使用infomation信息框  
                     "路径错误",
                     "文件夹不存在，请检查用户名和微信号")
             else:
-                month = int(self.lineEdit_2.text())
-                picCacheCheck = self.checkBox.isChecked()
-                fileCheck = self.checkBox_2.isChecked()
-                picCheck = self.checkBox_3.isChecked()
-                videoCheck = self.checkBox_4.isChecked()
-                if picCacheCheck:
-                    self.deleteFile(path, month, "piccache")
-                if fileCheck:
-                    self.deleteFile(path, month, "file")
-                if picCheck:
-                    self.deleteFile(path, month, "pic")
-                if videoCheck:
-                    self.deleteFile(path, month, "video")
+                self.month = int(self.lineEdit_2.text())
+                self.picCacheCheck = self.checkBox.isChecked()
+                self.fileCheck = self.checkBox_2.isChecked()
+                self.picCheck = self.checkBox_3.isChecked()
+                self.videoCheck = self.checkBox_4.isChecked()
 
-                out = "本次共清理文件" + str(self.fileNum) + "个。请前往回收站检查并清空。"
-                QMessageBox.information(
-                    self,  #使用infomation信息框  
-                    "清理完成",
-                    out)
+                self.getFileNum(self.path, self.month, self.picCacheCheck, self.fileCheck, self.picCheck,
+                                self.videoCheck)
+                #增加0边界处理
+                if self.fileNum == 0:
+                    out = "本次共清理文件" + str(self.fileNum) + "个。"
+                    QMessageBox.information(
+                        self,  #使用infomation信息框
+                        "清理完成",
+                        out)
+                    return
+                self.onButtonClick()
+                # if self.picCacheCheck:
+                #     self.deleteFile(path, month, "piccache")
+                # if self.fileCheck:
+                #     self.deleteFile(path, month, "file")
+                # if self.picCheck:
+                #     self.deleteFile(path, month, "pic")
+                # if self.videoCheck:
+                #     self.deleteFile(path, month, "video")
 
-    def deleteFile(self, path, month, type):
-        dirname = path
-        # Convert path to the right format for the current operating system
-        correct_path = Path(dirname)
-        now = datetime.datetime.now()
-        if type == "piccache":
-            path_one = correct_path / 'Attachment'
-        elif type == "file":
-            path_one = correct_path / 'Files'
-        elif type == "pic":
-            path_one = correct_path / 'Image/Image'
-        elif type == "video":
-            path_one = correct_path / 'Video'
+                # out = "本次共清理文件" + str(self.fileNum) + "个。请前往回收站检查并清空。"
+                # QMessageBox.information(
+                #     self,  #使用infomation信息框
+                #     "清理完成",
+                #     out)
 
-        # Delete path_one
-        if os.path.exists(path_one):
-            list = os.listdir(path_one)
-            filelist = []
-            for i in range(0, len(list)):
-                file_path = os.path.join(path_one, list[i])
-                if os.path.isfile(file_path):
-                    filelist.append(list[i])
-            for i in range(0, len(filelist)):
-                file_path = os.path.join(path_one, filelist[i])
-                if os.path.isdir(file_path):
-                    continue
-                timestamp = datetime.datetime.fromtimestamp(
-                    os.path.getmtime(file_path))
-                r = relativedelta.relativedelta(now, timestamp)
-                if r.years * 12 + r.months > month:
-                    send2trash(file_path)
-                    self.fileNum = self.fileNum + 1
+    # def deleteFile(self, path, month, type):
+    #     dirname = path
+    #     # Convert path to the right format for the current operating system
+    #     correct_path = Path(dirname)
+    #     now = datetime.datetime.now()
+    #     if type == "piccache":
+    #         path_one = correct_path / 'Attachment'
+    #     elif type == "file":
+    #         path_one = correct_path / 'Files'
+    #     elif type == "pic":
+    #         path_one = correct_path / 'Image/Image'
+    #     elif type == "video":
+    #         path_one = correct_path / 'Video'
+    #
+    #     # Delete path_one
+    #     if os.path.exists(path_one):
+    #         list = os.listdir(path_one)
+    #         filelist = []
+    #         for i in range(0, len(list)):
+    #             file_path = os.path.join(path_one, list[i])
+    #             if os.path.isfile(file_path):
+    #                 filelist.append(list[i])
+    #         for i in range(0, len(filelist)):
+    #             file_path = os.path.join(path_one, filelist[i])
+    #             if os.path.isdir(file_path):
+    #                 continue
+    #             timestamp = datetime.datetime.fromtimestamp(
+    #                 os.path.getmtime(file_path))
+    #             r = relativedelta.relativedelta(now, timestamp)
+    #             if r.years * 12 + r.months > month:
+    #                 send2trash(file_path)
+    #                 self.fileNum = self.fileNum + 1
 
 
 
@@ -252,3 +288,71 @@ class Ui_MainWin(object):
         icon.addPixmap(
             QtGui.QPixmap("icon.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         MainWin.setWindowIcon(icon)
+
+   #获得不同路径下的文件总数
+    def getFileNum(self, path, month, picCacheCheck, fileCheck, picCheck, videoCheck):
+
+        dirname = path
+        # Convert path to the right format for the current operating system
+        correct_path = Path(dirname)
+        now = datetime.datetime.now()
+        # if type == "piccache":
+        #     path_one = correct_path / 'Attachment'
+        # elif type == "file":
+        #     path_one = correct_path / 'Files'
+        # elif type == "pic":
+        #     path_one = correct_path / 'Image/Image'
+        # elif type == "video":
+        #     path_one = correct_path / 'Video'
+        #
+        # self.getPathFileNum(now, month, path_one)
+
+        if picCacheCheck:
+            path_one = correct_path / 'Attachment'
+            self.getPathFileNum(now, month, path_one)
+        if fileCheck:
+            path_one = correct_path / 'Files'
+            self.getPathFileNum(now, month, path_one)
+        if picCheck:
+            path_one = correct_path / 'Image/Image'
+            self.getPathFileNum(now, month, path_one)
+        if videoCheck:
+            path_one = correct_path / 'Video'
+            self.getPathFileNum(now, month, path_one)
+
+    #获得该路径下的文件数目
+    def getPathFileNum(self, now, month, path_one):
+        # caculate path_one
+        if os.path.exists(path_one):
+            list = os.listdir(path_one)
+            filelist = []
+            for i in range(0, len(list)):
+                file_path = os.path.join(path_one, list[i])
+                if os.path.isfile(file_path):
+                    filelist.append(list[i])
+            for i in range(0, len(filelist)):
+                file_path = os.path.join(path_one, filelist[i])
+                if os.path.isdir(file_path):
+                    continue
+                timestamp = datetime.datetime.fromtimestamp(
+                    os.path.getmtime(file_path))
+                r = relativedelta.relativedelta(now, timestamp)
+                if r.years * 12 + r.months > month:
+                    self.fileNum = self.fileNum + 1
+
+    #进度条事件
+    def onButtonClick(self):
+        #另起一个线程来实现删除文件和更新进度条
+        self.calc = deleteThread(self.fileNum + self.dirNum, self.path, self.month, self.picCacheCheck, self.fileCheck, self.picCheck, self.videoCheck, True)
+        self.calc.delete_proess_signal.connect(self.onCountChanged)
+        self.calc.start()
+
+    def onCountChanged(self, value):
+        self.progress.setValue(value)
+        if value == 100:
+            out = "本次共清理文件" + str(self.fileNum) + "个。请前往回收站检查并清空。"
+            QMessageBox.information(
+                self,  # 使用infomation信息框
+                "清理完成",
+                out)
+            return
