@@ -6,7 +6,7 @@ from pathlib import Path
 class loadPath():
 
     def load(self):
-        syspath = sys.path[0]
+        syspath = sys.prefix
         correct_syspath = Path(syspath)
         filepath = correct_syspath / 'path_file.txt'
         if os.path.exists(filepath):
@@ -17,7 +17,7 @@ class loadPath():
             return ''
 
     def storage(self, path):
-        syspath = sys.path[0]
+        syspath = sys.prefix
         correct_syspath = Path(syspath)
         filepath = correct_syspath / 'path_file.txt'
         with open(filepath, 'w') as f:

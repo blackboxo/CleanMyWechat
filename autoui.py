@@ -177,6 +177,12 @@ class Ui_MainWin(object):
     def confirm(self):
         self.fileList = []
         self.dirList = []
+        if self.lineEdit_2.text() == '':
+            QMessageBox.critical(
+                self,  #使用infomation信息框  
+                "缺少天数",
+                "请输入需要删除多久以前的文件")
+            return
         if self.pushButton.isEnabled():
             self.day = int(self.lineEdit_2.text())
             self.picCacheCheck = self.checkBox.isChecked()
@@ -229,29 +235,16 @@ class Ui_MainWin(object):
                         "清理完成",
                         out)
                     return
-                for value in self.version:
-                    self.path = value
-                    self.onButtonClick()
-
-        elif self.lineEdit_2.text() == '':
-            QMessageBox.critical(
-                self,  #使用infomation信息框  
-                "缺少月份",
-                "请输入需要删除多久以前的文件")
-        else:
-            QMessageBox.critical(
-                self,  #使用infomation信息框  
-                "缺失路径",
-                "请输入微信文件的存储路径")
+                self.onButtonClick()
 
     def retranslateUi(self, MainWin):
         _translate = QtCore.QCoreApplication.translate
-        MainWin.setWindowTitle(_translate("MainWin", "微信客户端数据自动删除工具V1.1"))
-        icon = QtGui.QIcon()
-        # change to your own icon path
-        icon.addPixmap(
-            QtGui.QPixmap("C:\Project\AutoDeleteFileOnPCWechat\icon.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        MainWin.setWindowIcon(icon)
+        MainWin.setWindowTitle(_translate("MainWin", "微信客户端数据自动删除工具V1.2"))
+        # icon = QtGui.QIcon()
+        # # change to your own icon path
+        # icon.addPixmap(
+        #     QtGui.QPixmap("C:\Project\AutoDeleteFileOnPCWechat\icon.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        # MainWin.setWindowIcon(icon)
         self.checkBox_4.setText(_translate("MainWin", "视频（视频文件和视频的封面图）"))
         self.label.setText(_translate("MainWin", "工具会自动识别路径，若自定义存储路径请填写："))
         self.lineEdit_2.setText(_translate("MainWin", "365"))
