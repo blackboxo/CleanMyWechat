@@ -8,36 +8,28 @@
 
 该工具不会删除文字的聊天记录，请放心使用。请给个 **Star** 吧，非常感谢！
 
-程序启动较慢，删除过程中如出现转圈等现象请耐心等待，删除结束将会有提示。
+程序启动可能较慢，请耐心等待。
 
-**现已经支持微信官网下载的 PC 版本，和 Microsoft Store 下载的微信 for Windows 版本。**
-
-**微信官网下载的 PC 版本：**
+**现已经支持 Windows 系统中的所有微信版本。**
 
 [国内地址 - 点击下载](
-https://www.lanzous.com/i9k041e)
+https://www.lanzous.com/i9sy1wj)
 
 [Github Release - 点击下载](
-https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0/AutoDeleteFileOnPCWechat.exe)
+https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.1/AutoDeleteFileOnPCWechatV1.1.exe)
 
-**Microsoft Store 下载的微信 for Windows 版本：**
 
-[国内地址 - 点击下载](https://www.lanzous.com/i9k03li)
-
-[Github Release - 点击下载](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0-forWindows/forWindows.exe)
-
-**如何找到微信文件的存储路径：**
-
-点击 PC 端微信左下角的按钮 -> 设置 -> 通用设置 -> 打开文件夹 -> 复制文件资源管理器的完整路径
 
 ## 特性
-1. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
-2. 自由设置需要删除的文件的距离时间，默认 24 个月；
-3. 删除后的文件放置在回收站中，检查后自行清空，防止删错需要的文件；
+1. 自动识别各个微信版本的默认存储路径，无需用户输入，且支持用户自定义的路径；
+2. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
+3. 自由设置需要删除的文件的距离时间，默认 365 天；
+4. 删除后的文件放置在回收站中，检查后自行清空，防止删错需要的文件；
+5. 支持删除进度的显示；
 
 ## 运行截图
 
-![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/20200216161434.png)
+![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/20200229191711.png)
 
 ## 微信现状
 
@@ -47,17 +39,19 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.0/Aut
 
 ## 待改进
 
-- [ ] 更改为以天为单位
-- [ ] 增加同时多个微信路径的支持，并保存路径
+- [x] 更改为以天为单位
+- [x] 增加多个微信路径的支持，支持保存路径
 - [x] 支持 Mac 平台(Mac 版本自带清除缓存，不再开发该平台)
 - [x] 支持 Microsoft Store 下载的微信 for Windows 版本
-- [ ] 支持 Microsoft Store 下载的微信 UWP 版本
+- [x] 支持 Microsoft Store 下载的微信 UWP 版本
 
 ## 致谢
 
 [@mylittlefox](https://www.mylittlefox.art)：图标及 Banner 设计
 
 [@Gears](https://refun.eu.org)：提供微信 for Windows 版本的文件目录树及测试支持
+
+@SongJee：版本 1.1 的主要开发者，增加进度条，支持多个微信版本，自动识别路径
 
 ## 开发者
 
