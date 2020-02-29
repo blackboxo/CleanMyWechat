@@ -13,7 +13,7 @@
 **现已经支持 Windows 系统中的所有微信版本。**
 
 [国内地址 - 点击下载](
-https://www.lanzous.com/i9sy1wj)
+https://www.lanzous.com/i9t50ra)
 
 [Github Release - 点击下载](
 https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.1/AutoDeleteFileOnPCWechatV1.1.exe)
