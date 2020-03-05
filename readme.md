@@ -39,6 +39,9 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.2/Aut
 
 ## 待改进
 
+欢迎 PR！都会写进致谢！
+
+- [ ] 支持 Windows XP（PyQt5 + pyinstaller）
 - [x] 更改为以天为单位
 - [x] 增加多个微信路径的支持，支持保存路径
 - [x] 支持 Mac 平台(Mac 版本自带清除缓存，不再开发该平台)
