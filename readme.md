@@ -4,11 +4,9 @@
 
 [![](https://img.shields.io/badge/platform-win64-lightgrey)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/v/release/blackboxo/AutoDeleteFileOnPCWechat)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/downloads/blackboxo/AutoDeleteFileOnPCWechat/total)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 
-自动删除 PC 端微信自动下载的大量文件、视频、图片等数据内容，解放你的空间。
+自动删除 PC 端微信自动下载的大量文件、视频、图片等数据内容，解放一年几十 G 的空间占用。
 
 该工具不会删除文字的聊天记录，请放心使用。请给个 **Star** 吧，非常感谢！
-
-程序启动可能较慢，请耐心等待。
 
 **现已经支持 Windows 系统中的所有微信版本。**
 
@@ -41,7 +39,11 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.2/Aut
 
 欢迎 PR！都会写进致谢！
 
-- [ ] 支持 Windows XP（PyQt5 + pyinstaller）
+- [ ] 自动识别出的多个微信账号的路径，让用户选择哪几个账号的需要删除，并记录参数
+- [ ] 有用户有每日定时删除的需求，考虑让应用开机自启动并常驻后台，或者“将选项变成参数加到快捷方式里运行自动执行”
+- [ ] 增加企业微信的支持
+- [ ] Windows XP 系统的支持（当前打包方式为 PyQt5 + pyinstaller）
+- [ ] 增加应用打包后的签名
 - [x] 更改为以天为单位
 - [x] 增加多个微信路径的支持，支持保存路径
 - [x] 支持 Mac 平台(Mac 版本自带清除缓存，不再开发该平台)
