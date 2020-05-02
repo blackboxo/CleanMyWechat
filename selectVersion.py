@@ -15,11 +15,13 @@ class selectVersion:
         dirlist = []
         for key in dic:
             if os.path.exists(dic[key]):
-                list = os.listdir(dic[key])
-                for i in range(0, len(list)):
-                    if list[i]=='All Users' or list[i]=='Applet':
-                        continue
-                    file_path = os.path.join(dic[key], list[i])
+                list_ = os.listdir(dic[key])
+                list_.remove('All Users')
+                list_.remove('Applet')
+                for i in range(0, len(list_)):
+                    file_path = os.path.join(dic[key], list_[i])
                     if os.path.isdir(file_path):
                         dirlist.append(file_path)
-        return dirlist
+                return (dirlist,list_)
+            else:
+                return ([],[])

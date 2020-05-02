@@ -33,6 +33,6 @@ class deleteThread(QThread):
                 proess = self.tempNum / int(self.fileNum) * 100
                 self.delete_proess_signal.emit(int(proess))
 
-            self.exit(0)  #关闭线程
+            self.quit()  #关闭线程
         except Exception as e:
             print(e)

@@ -1,0 +1,12 @@
+<RCC>
+  <qresource prefix="icon">
+    <file>微信.svg</file>
+    <file>全局_反馈.svg</file>
+    <file>用户_体力.svg</file>
+    <file>顶部_退出.svg</file>
+    <file>arrow-down.png</file>
+    <file>复选.svg</file>
+    <file>复选1.svg</file>
+    <file>wechat.png</file>
+  </qresource>
+</RCC>
