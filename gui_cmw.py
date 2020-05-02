@@ -164,6 +164,7 @@ class Window(QMainWindow):
         self.calc = deleteThread(self.file_list, self.dir_list)
         self.calc.delete_proess_signal.connect(self.callback)
         self.calc.start()
+        self.calc.exec()
     def callback(self, value):
         self.bar_progress.setValue(value)
         if value == 100:
