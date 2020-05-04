@@ -3,12 +3,13 @@ import shutil
 
 from send2trash import send2trash
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, QMutex
 
 
 ##################################################################
 #删除线程
 ##################################################################
+qmut = QMutex()
 class deleteThread(QThread):
     delete_proess_signal = pyqtSignal(int)  #创建信号
 
@@ -20,6 +21,7 @@ class deleteThread(QThread):
         self.tempNum = 0
 
     def run(self):
+        qmut.lock()
         try:
             for file_path in self.fileList:
                 send2trash(file_path)
@@ -33,6 +35,7 @@ class deleteThread(QThread):
                 proess = self.tempNum / int(self.fileNum) * 100
                 self.delete_proess_signal.emit(int(proess))
 
-            self.exit(0)  #关闭线程
+            qmut.unlock()
+            self.exec_()  #关闭线程
         except Exception as e:
             print(e)
