@@ -14,7 +14,7 @@
 https://www.lanzous.com/i9t50ra)
 
 [Github Release - 点击下载](
-https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.2/AutoDeleteFileOnPCWechatV1.2.exe)
+https://github.com/blackboxo/CleanMyWechat/releases/download/v1.2/AutoDeleteFileOnPCWechatV1.2.exe)
 
 
 
@@ -44,10 +44,10 @@ https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases/download/v1.2/Aut
 - [ ] 增加企业微信的支持
 - [ ] Windows XP 系统的支持（当前打包方式为 PyQt5 + pyinstaller）
 - [ ] 增加应用打包后的签名
-- [x] ~~更改为以天为单位
-- [x] ~~增加多个微信路径的支持，支持保存路径
-- [x] ~~支持 Mac 平台(Mac 版本自带清除缓存，不再开发该平台)
-- [x] ~~支持 Microsoft Store 下载的微信 for Windows 版本
+- [x] ~~更改为以天为单位~~
+- [x] ~~增加多个微信路径的支持，支持保存路径~~
+- [x] ~~支持 Mac 平台(Mac 版本自带清除缓存，不再开发该平台)~~
+- [x] ~~支持 Microsoft Store 下载的微信 for Windows 版本~~
 - [x] ~~支持 Microsoft Store 下载的微信 UWP 版本~~
 
 ## 致谢
