@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>442</width>
-    <height>411</height>
+    <width>441</width>
+    <height>399</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,15 +18,15 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="2">
-     <spacer name="verticalSpacer_2">
+    <item row="0" column="1">
+     <spacer name="horizontalSpacer">
       <property name="orientation">
-       <enum>Qt::Vertical</enum>
+       <enum>Qt::Horizontal</enum>
       </property>
       <property name="sizeHint" stdset="0">
        <size>
-        <width>20</width>
-        <height>40</height>
+        <width>40</width>
+        <height>20</height>
        </size>
       </property>
      </spacer>
@@ -44,34 +44,8 @@
       </property>
      </spacer>
     </item>
-    <item row="0" column="1">
-     <spacer name="horizontalSpacer">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="2" column="1">
-     <spacer name="horizontalSpacer_2">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
     <item row="1" column="1">
-     <widget class="QFrame" name="frame">
+     <widget class="QFrame" name="mainFrame">
       <property name="styleSheet">
        <string notr="true">.QFrame {
 	background: rgb(245, 245, 245);
@@ -117,107 +91,21 @@
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <property name="sizeConstraint">
-          <enum>QLayout::SetDefaultConstraint</enum>
-         </property>
-         <item>
-          <widget class="QLineEdit" name="line_wechat">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>20</width>
-             <height>30</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QLineEdit {
-	border:1px solid #d9d9d9;
-	border-radius:3px;
-	line-height: 140px;
-	padding: 5px;
-	color: #434343;
-}
-
-.QLineEdit:hover {
-	border:1px solid #40a9ff;
-	border-radius:3px;
-	line-height: 140px;
-	padding: 5px;
-	color: #434343;
-}</string>
-           </property>
-           <property name="placeholderText">
-            <string>在这里输入微信数据目录</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btn_close">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>30</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-             <pointsize>-1</pointsize>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QPushButton {
-	height: 24px;
-    padding: 0px 15px;
-    font-size: 14px;
-    border-radius: 3px;
-    color: rgba(0,0,0,.65);
-    background-color: #fff;
-    border: 1px solid #d9d9d9;
-}
-
-.QPushButton:hover {
-	height: 24px;
-    padding: 0px 15px;
-    font-size: 14px;
-    border-radius: 3px;
-    color: #40a9ff;
-    background-color: #fff;
-    border: 1px solid #40a9ff;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>退出</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <property name="spacing">
+          <number>5</number>
+         </property>
          <property name="sizeConstraint">
           <enum>QLayout::SetDefaultConstraint</enum>
          </property>
          <item>
           <widget class="QLineEdit" name="line_gobackdays">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
              <width>60</width>
@@ -256,6 +144,12 @@
          </item>
          <item>
           <widget class="QComboBox" name="combo_user">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
              <width>16777215</width>
@@ -282,6 +176,100 @@
 .QComboBox::down-arrow {
     image: url(:/icon/arrow-down.png)
 }</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_file">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <family>微软雅黑</family>
+             <pointsize>-1</pointsize>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">.QPushButton {
+	height: 24px;
+    padding: 0px 10px;
+    font-size: 14px;
+    border-radius: 3px;
+    color: rgba(0,0,0,.65);
+    background-color: #fff;
+    border: 1px solid #d9d9d9;
+}
+
+.QPushButton:hover {
+	height: 24px;
+    padding: 0px 10px;
+    font-size: 14px;
+    border-radius: 3px;
+    color: #40a9ff;
+    background-color: #fff;
+    border: 1px solid #40a9ff;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>自定义</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_close">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <family>微软雅黑</family>
+             <pointsize>-1</pointsize>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">.QPushButton {
+	height: 24px;
+    padding: 0px 10px;
+    font-size: 14px;
+    border-radius: 3px;
+    color: rgba(0,0,0,.65);
+    background-color: #fff;
+    border: 1px solid #d9d9d9;
+}
+
+.QPushButton:hover {
+	height: 24px;
+    padding: 0px 10px;
+    font-size: 14px;
+    border-radius: 3px;
+    color: #40a9ff;
+    background-color: #fff;
+    border: 1px solid #40a9ff;
+}
+</string>
+           </property>
+           <property name="text">
+            <string>返回</string>
            </property>
           </widget>
          </item>
@@ -320,6 +308,12 @@
          </item>
          <item>
           <widget class="QCheckBox" name="check_is_clean">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="font">
             <font>
              <family>微软雅黑</family>
@@ -609,6 +603,32 @@ QCheckBox::indicator::checked {
        </item>
       </layout>
      </widget>
+    </item>
+    <item row="1" column="2">
+     <spacer name="verticalSpacer_2">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>40</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+    <item row="2" column="1">
+     <spacer name="horizontalSpacer_2">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>40</width>
+        <height>20</height>
+       </size>
+      </property>
+     </spacer>
     </item>
    </layout>
   </widget>
