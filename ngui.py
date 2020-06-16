@@ -342,7 +342,7 @@ class MainWindow(Window):
             i = i + 1
                 
             if len(self.file_list) + len(self.dir_list) == 0:
-                self.setWarninginfo("没有需要清理的文件（可能是您没打勾哦）")
+                self.setWarninginfo("没有需要清理的文件")
                 
             self.callin()
 

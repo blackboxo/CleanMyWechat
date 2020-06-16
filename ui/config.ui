@@ -222,7 +222,7 @@
 </string>
            </property>
            <property name="text">
-            <string>自定义</string>
+            <string>+自定义路径</string>
            </property>
           </widget>
          </item>
@@ -269,7 +269,7 @@
 </string>
            </property>
            <property name="text">
-            <string>返回</string>
+            <string>保存</string>
            </property>
           </widget>
          </item>
@@ -594,7 +594,7 @@ QCheckBox::indicator::checked {
 }</string>
          </property>
          <property name="text">
-          <string>Clean My Wechat - 微信歌者 - 设置页面</string>
+          <string>Clean My Wechat - 设置页面</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
