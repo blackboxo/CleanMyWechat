@@ -11,6 +11,7 @@ import os, datetime, time, re, math, resources, shutil, json
 
 from deleteThread import *
 from selectVersion import *
+from selectVersion import check_dir, existing_user_config
 
 working_dir = os.path.split(os.path.realpath(__file__))[0]
 
@@ -112,7 +113,47 @@ class ConfigWindow(Window):
         self.line_gobackdays.textChanged.connect(self.update_config)
 
     def open_file(self):
-        self.openfile_name = QFileDialog.getExistingDirectory(self,'选择微信数据目录','')
+        openfile_path = QFileDialog.getExistingDirectory(self,'选择微信数据目录','')
+        if not openfile_path or openfile_path == '':
+            return False
+        if check_dir(openfile_path) == 0:
+            self.setSuccessinfo('读取路径成功！')
+            list_ = os.listdir(openfile_path)
+            user_list = [elem for elem in list_ if elem != 'All Users' and elem != 'Applet']
+            # 如果已有用户配置，那么写入新的用户配置，否则默认写入新配置
+            dir_list = []
+            user_config = []
+            existing_user_config_dic = existing_user_config()
+            for user_wx_id in user_list:
+                dir_list.append(os.path.join(openfile_path, user_wx_id))
+                if user_wx_id in existing_user_config_dic:
+                    user_config.append(existing_user_config_dic[user_wx_id])
+                else:
+                    user_config.append({
+                        "wechat_id" : user_wx_id,
+                        "clean_days": "365",
+                        "is_clean": True,
+                        "clean_pic_cache": True,
+                        "clean_file": True,
+                        "clean_pic": True,
+                        "clean_video": True,
+                        "is_timer": True,
+                        "timer": "0h"
+                    })
+
+            self.config = {
+                "data_dir": dir_list,
+                "users": user_config
+            }
+            for m in self.config:
+                print(m)
+                print(self.config[m])
+            with open(working_dir + "/config.json", "w", encoding="utf-8") as f:
+                json.dump(self.config,f)
+            self.load_config()
+        else:
+            self.setWarninginfo('请选择正确的文件夹！一般是WeChat Files文件夹。')
+
 
     def check_wechat_exists(self):
         self.selectVersion = selectVersion()
@@ -123,9 +164,10 @@ class ConfigWindow(Window):
         else:
             return True
     def load_config(self):
-        self.config = open(working_dir+"/config.json", encoding="utf-8")
-        self.config = json.load(self.config)
+        fd = open(working_dir+"/config.json", encoding="utf-8")
+        self.config = json.load(fd)
 
+        self.combo_user.clear()
         for value in self.config["users"]:
             self.combo_user.addItem(value["wechat_id"])
 
@@ -150,8 +192,7 @@ class ConfigWindow(Window):
                 self.check_picscache.setChecked(value["clean_pic_cache"])
     def create_config(self):
         true = True
-        false = False
-        if not os.path.exists(working_dir+"/config.json"): 
+        if not os.path.exists(working_dir+"/config.json"):
             if not self.check_wechat_exists():
                 if os.path.exists(self.openfile_name):
                     dirlist = []
@@ -190,15 +231,12 @@ class ConfigWindow(Window):
                 })
             with open(working_dir+"/config.json","w",encoding="utf-8") as f:
                 json.dump(self.config,f)
-            self.setSuccessinfo("加载配置文件成功")
             self.load_config()
+            self.setSuccessinfo("加载配置文件成功")
         else:
             self.setSuccessinfo("加载配置文件成功")
             self.load_config()
     def update_config(self):
-        true = True
-        false = False
-
         self.config = open(working_dir+"/config.json", encoding="utf-8")
         self.config = json.load(self.config)
 
