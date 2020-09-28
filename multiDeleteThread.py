@@ -20,16 +20,15 @@ class multiDeleteThread(QThread):
     def run(self):
         try:
             for file_path in self.fileList:
-                qmut.lock()
                 send2trash(file_path)
+                qmut.lock()
                 self.share_thread_arr[0] += 1
                 self.delete_process_signal.emit(self.share_thread_arr[0])
                 qmut.unlock()
 
             for file_path in self.dirList:
-                qmut.lock()
-
                 send2trash(file_path)
+                qmut.lock()
                 self.share_thread_arr[0] += 1
                 self.delete_process_signal.emit(self.share_thread_arr[0])
                 qmut.unlock()

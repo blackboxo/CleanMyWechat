@@ -112,15 +112,15 @@ class ConfigWindow(Window):
     def _connect(self):
         self.combo_user.currentIndexChanged.connect(self.refresh_ui)
         # self.line_wechat.textChanged.connect(self.create_config)
-        self.btn_close.clicked.connect(self.doFadeOut)
+        self.btn_close.clicked.connect(self.save_config)
         self.btn_file.clicked.connect(self.open_file)
 
-        self.check_is_clean.stateChanged.connect(self.update_config)
-        self.check_picdown.stateChanged.connect(self.update_config)
-        self.check_files.stateChanged.connect(self.update_config)
-        self.check_video.stateChanged.connect(self.update_config)
-        self.check_picscache.stateChanged.connect(self.update_config)
-        self.line_gobackdays.textChanged.connect(self.update_config)
+        # self.check_is_clean.stateChanged.connect(self.update_config)
+        # self.check_picdown.stateChanged.connect(self.update_config)
+        # self.check_files.stateChanged.connect(self.update_config)
+        # self.check_video.stateChanged.connect(self.update_config)
+        # self.check_picscache.stateChanged.connect(self.update_config)
+        # self.line_gobackdays.textChanged.connect(self.update_config)
 
     def open_file(self):
         openfile_path = QFileDialog.getExistingDirectory(self, '选择微信数据目录', '')
@@ -161,6 +161,10 @@ class ConfigWindow(Window):
             self.load_config()
         else:
             self.setWarninginfo('请选择正确的文件夹！一般是WeChat Files文件夹。')
+
+    def save_config(self):
+        self.update_config()
+        self.doFadeOut()
 
     def check_wechat_exists(self):
         self.selectVersion = selectVersion()
@@ -248,12 +252,13 @@ class ConfigWindow(Window):
             self.load_config()
 
     def update_config(self):
-        fd = open(working_dir + "/config.json", encoding="utf-8")
-        self.config = json.load(fd)
-
         for value in self.config["users"]:
             if value["wechat_id"] == self.combo_user.currentText():
-                value["clean_days"] = self.line_gobackdays.text()
+                days = int(self.line_gobackdays.text())
+                if days < 0:
+                    value["clean_days"] = "0"
+                else:
+                    value["clean_days"] = self.line_gobackdays.text()
                 value["is_clean"] = self.check_is_clean.isChecked()
                 value["clean_pic"] = self.check_picdown.isChecked() 
                 value["clean_file"] = self.check_files.isChecked() 
@@ -373,7 +378,6 @@ class MainWindow(Window):
                         dir_list.append(file_path)
                     elif diff == month:
                         self.pathFileDeal(now, day, file_path, file_list, dir_list)
-                        # print("delete:", file_path)
 
     # def callin(self, file_list, dir_list):
     #     #另起一个线程来实现删除文件和更新进度条
@@ -383,10 +387,8 @@ class MainWindow(Window):
     #     #self.calc.exec()
 
     def callback(self, v):
-        print('got v', v)
         value = v / int((self.total_file + self.total_dir)) * 100
         self.bar_progress.setValue(value)
-        print('got value', value)
         if value == 100:
             out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(self.total_dir) + "个。请前往回收站检查并清空。"
             self.setSuccessinfo(out)
