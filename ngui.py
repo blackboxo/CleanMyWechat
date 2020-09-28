@@ -254,11 +254,14 @@ class ConfigWindow(Window):
     def update_config(self):
         for value in self.config["users"]:
             if value["wechat_id"] == self.combo_user.currentText():
-                days = int(self.line_gobackdays.text())
-                if days < 0:
+                try:
+                    days = int(self.line_gobackdays.text())
+                    if days < 0:
+                        value["clean_days"] = "0"
+                    else:
+                        value["clean_days"] = self.line_gobackdays.text()
+                except ValueError:
                     value["clean_days"] = "0"
-                else:
-                    value["clean_days"] = self.line_gobackdays.text()
                 value["is_clean"] = self.check_is_clean.isChecked()
                 value["clean_pic"] = self.check_picdown.isChecked() 
                 value["clean_file"] = self.check_files.isChecked() 
