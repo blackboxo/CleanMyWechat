@@ -1,6 +1,7 @@
 import sys
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsDropShadowEffect, QListWidgetItem, QListView, QWidget, QLabel, QHBoxLayout, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsDropShadowEffect, QListWidgetItem, QListView, QWidget, \
+    QLabel, QHBoxLayout, QFileDialog
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint
 from PyQt5.QtGui import QMouseEvent, QCursor, QColor
 from PyQt5.uic import loadUi
@@ -10,31 +11,35 @@ from dateutil import relativedelta
 import os, datetime, time, re, math, resources, shutil, json
 
 from deleteThread import *
+from multiDeleteThread import multiDeleteThread
 from selectVersion import *
 from selectVersion import check_dir, existing_user_config
 
 working_dir = os.path.split(os.path.realpath(__file__))[0]
+
 
 # 主窗口
 class Window(QMainWindow):
 
     def mousePressEvent(self, event):
         # 重写一堆方法使其支持拖动
-        if event.button()==Qt.LeftButton:
-            self.m_drag=True
-            self.m_DragPosition=event.globalPos()-self.pos()
+        if event.button() == Qt.LeftButton:
+            self.m_drag = True
+            self.m_DragPosition = event.globalPos() - self.pos()
             event.accept()
-            #self.setCursor(QCursor(Qt.OpenHandCursor))
+            # self.setCursor(QCursor(Qt.OpenHandCursor))
+
     def mouseMoveEvent(self, QMouseEvent):
         try:
             if Qt.LeftButton and self.m_drag:
-                self.move(QMouseEvent.globalPos()-self.m_DragPosition)
+                self.move(QMouseEvent.globalPos() - self.m_DragPosition)
                 QMouseEvent.accept()
         except:
             pass
+
     def mouseReleaseEvent(self, QMouseEvent):
-        self.m_drag=False
-        #self.setCursor(QCursor(Qt.ArrowCursor))
+        self.m_drag = False
+        # self.setCursor(QCursor(Qt.ArrowCursor))
 
     def _frame(self):
         # 边框
@@ -44,13 +49,14 @@ class Window(QMainWindow):
         effect = QGraphicsDropShadowEffect(blurRadius=12, xOffset=0, yOffset=0)
         effect.setColor(QColor(25, 25, 25, 170))
         self.mainFrame.setGraphicsEffect(effect)
+
     def doFadeIn(self):
         # 动画
         self.animation = QPropertyAnimation(self, b'windowOpacity')
         # 持续时间250ms
         self.animation.setDuration(250)
         try:
-        # 尝试先取消动画完成后关闭窗口的信号
+            # 尝试先取消动画完成后关闭窗口的信号
             self.animation.finished.disconnect(self.close)
         except:
             pass
@@ -60,6 +66,7 @@ class Window(QMainWindow):
         self.animation.setStartValue(0)
         self.animation.setEndValue(1)
         self.animation.start()
+
     def doFadeOut(self):
         self.animation.stop()
         # 动画完成则关闭窗口
@@ -69,39 +76,42 @@ class Window(QMainWindow):
         self.animation.setStartValue(1)
         self.animation.setEndValue(0)
         self.animation.start()
+
     def setWarninginfo(self, text):
         self.lab_info.setStyleSheet(
-                    """
-                    .QLabel {
-	                    border:1px solid #ffccc7;
-	                    border-radius:3px;
-	                    line-height: 140px;
-	                    padding: 5px;
-	                    color: #434343;
-	                    background: #fff2f0;
-                    }
-                    """
-                )
+            """
+            .QLabel {
+                border:1px solid #ffccc7;
+                border-radius:3px;
+                line-height: 140px;
+                padding: 5px;
+                color: #434343;
+                background: #fff2f0;
+            }
+            """
+        )
         self.lab_info.setText(text)
+
     def setSuccessinfo(self, text):
         self.lab_info.setStyleSheet(
-                    """
-                    .QLabel {
-	                    border:1px solid #b7eb8f;
-	                    border-radius:3px;
-	                    line-height: 140px;
-	                    padding: 5px;
-	                    color: #434343;
-	                    background: #f6ffed;
-                    }
-                    """
-                )
+            """
+            .QLabel {
+                border:1px solid #b7eb8f;
+                border-radius:3px;
+                line-height: 140px;
+                padding: 5px;
+                color: #434343;
+                background: #f6ffed;
+            }
+            """
+        )
         self.lab_info.setText(text)
+
 
 class ConfigWindow(Window):
     def _connect(self):
         self.combo_user.currentIndexChanged.connect(self.refresh_ui)
-        #self.line_wechat.textChanged.connect(self.create_config)
+        # self.line_wechat.textChanged.connect(self.create_config)
         self.btn_close.clicked.connect(self.doFadeOut)
         self.btn_file.clicked.connect(self.open_file)
 
@@ -113,7 +123,7 @@ class ConfigWindow(Window):
         self.line_gobackdays.textChanged.connect(self.update_config)
 
     def open_file(self):
-        openfile_path = QFileDialog.getExistingDirectory(self,'选择微信数据目录','')
+        openfile_path = QFileDialog.getExistingDirectory(self, '选择微信数据目录', '')
         if not openfile_path or openfile_path == '':
             return False
         if check_dir(openfile_path) == 0:
@@ -130,7 +140,7 @@ class ConfigWindow(Window):
                     user_config.append(existing_user_config_dic[user_wx_id])
                 else:
                     user_config.append({
-                        "wechat_id" : user_wx_id,
+                        "wechat_id": user_wx_id,
                         "clean_days": "365",
                         "is_clean": True,
                         "clean_pic_cache": True,
@@ -141,19 +151,16 @@ class ConfigWindow(Window):
                         "timer": "0h"
                     })
 
-            self.config = {
+            config = {
                 "data_dir": dir_list,
                 "users": user_config
             }
-            for m in self.config:
-                print(m)
-                print(self.config[m])
+
             with open(working_dir + "/config.json", "w", encoding="utf-8") as f:
-                json.dump(self.config,f)
+                json.dump(config, f)
             self.load_config()
         else:
             self.setWarninginfo('请选择正确的文件夹！一般是WeChat Files文件夹。')
-
 
     def check_wechat_exists(self):
         self.selectVersion = selectVersion()
@@ -163,8 +170,9 @@ class ConfigWindow(Window):
             return False
         else:
             return True
+
     def load_config(self):
-        fd = open(working_dir+"/config.json", encoding="utf-8")
+        fd = open(working_dir + "/config.json", encoding="utf-8")
         self.config = json.load(fd)
 
         self.combo_user.clear()
@@ -174,12 +182,13 @@ class ConfigWindow(Window):
         self.line_gobackdays.setText(str(self.config["users"][0]["clean_days"]))
         self.check_is_clean.setChecked(self.config["users"][0]["is_clean"])
         self.check_picdown.setChecked(self.config["users"][0]["clean_pic"])
-        self.check_files.setChecked(self.config["users"][0]["clean_file"]) 
+        self.check_files.setChecked(self.config["users"][0]["clean_file"])
         self.check_video.setChecked(self.config["users"][0]["clean_video"])
         self.check_picscache.setChecked(self.config["users"][0]["clean_pic_cache"])
         self.setSuccessinfo("加载配置文件成功")
+
     def refresh_ui(self):
-        self.config = open(working_dir+"/config.json", encoding="utf-8")
+        self.config = open(working_dir + "/config.json", encoding="utf-8")
         self.config = json.load(self.config)
 
         for value in self.config["users"]:
@@ -187,12 +196,13 @@ class ConfigWindow(Window):
                 self.line_gobackdays.setText(str(value["clean_days"]))
                 self.check_is_clean.setChecked(value["is_clean"])
                 self.check_picdown.setChecked(value["clean_pic"])
-                self.check_files.setChecked(value["clean_file"]) 
+                self.check_files.setChecked(value["clean_file"])
                 self.check_video.setChecked(value["clean_video"])
                 self.check_picscache.setChecked(value["clean_pic_cache"])
+
     def create_config(self):
         true = True
-        if not os.path.exists(working_dir+"/config.json"):
+        if not os.path.exists(working_dir + "/config.json"):
             if not self.check_wechat_exists():
                 if os.path.exists(self.openfile_name):
                     dirlist = []
@@ -214,31 +224,32 @@ class ConfigWindow(Window):
                     return
 
             self.config = {
-                "data_dir" : self.version_scan,
-                "users" : []
+                "data_dir": self.version_scan,
+                "users": []
             }
             for value in self.users_scan:
                 self.config["users"].append({
-                    "wechat_id" : value,
+                    "wechat_id": value,
                     "clean_days": 365,
-                    "is_clean": true,
+                    "is_clean": False,
                     "clean_pic_cache": true,
-                    "clean_file": true,
+                    "clean_file": False,
                     "clean_pic": true,
                     "clean_video": true,
                     "is_timer": true,
                     "timer": "0h"
                 })
-            with open(working_dir+"/config.json","w",encoding="utf-8") as f:
-                json.dump(self.config,f)
+            with open(working_dir + "/config.json", "w", encoding="utf-8") as f:
+                json.dump(self.config, f)
             self.load_config()
             self.setSuccessinfo("加载配置文件成功")
         else:
             self.setSuccessinfo("加载配置文件成功")
             self.load_config()
+
     def update_config(self):
-        self.config = open(working_dir+"/config.json", encoding="utf-8")
-        self.config = json.load(self.config)
+        fd = open(working_dir + "/config.json", encoding="utf-8")
+        self.config = json.load(fd)
 
         for value in self.config["users"]:
             if value["wechat_id"] == self.combo_user.currentText():
@@ -255,7 +266,7 @@ class ConfigWindow(Window):
 
     def __init__(self):
         super().__init__()
-        loadUi(working_dir+"/ui/config.ui", self)
+        loadUi(working_dir + "/ui/config.ui", self)
 
         self._frame()
         self._connect()
@@ -264,6 +275,7 @@ class ConfigWindow(Window):
         self.create_config()
 
         self.show()
+
 
 class MainWindow(Window):
 
@@ -286,6 +298,7 @@ class MainWindow(Window):
                 win = ConfigWindow()
                 return True
         return False
+
     def _eventfilter(self):
         # 事件过滤
         self.lab_close.installEventFilter(self)
@@ -293,7 +306,7 @@ class MainWindow(Window):
         self.lab_config.installEventFilter(self)
 
     def get_fileNum(self, path, day, picCacheCheck, fileCheck, picCheck,
-                   videoCheck):
+                    videoCheck, file_list, dir_list):
         dir_name = PureWindowsPath(path)
         # Convert path to the right format for the current operating system
         correct_path = Path(dir_name)
@@ -301,20 +314,21 @@ class MainWindow(Window):
         if picCacheCheck:
             path_one = correct_path / 'Attachment'
             path_two = correct_path / 'FileStorage/Cache'
-            self.getPathFileNum(now, day, path_one, path_two)
+            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
         if fileCheck:
             path_one = correct_path / 'Files'
             path_two = correct_path / 'FileStorage/File'
-            self.getPathFileNum(now, day, path_one, path_two)
+            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
         if picCheck:
             path_one = correct_path / 'Image/Image'
             path_two = correct_path / 'FileStorage/Image'
-            self.getPathFileNum(now, day, path_one, path_two)
+            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
         if videoCheck:
             path_one = correct_path / 'Video'
             path_two = correct_path / 'FileStorage/Video'
-            self.getPathFileNum(now, day, path_one, path_two)
-    def pathFileDeal(self, now, day, path):
+            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
+
+    def pathFileDeal(self, now, day, path, file_list, dir_list):
         if os.path.exists(path):
             list = os.listdir(path)
             filelist = []
@@ -328,14 +342,15 @@ class MainWindow(Window):
                     continue
                 timestamp = datetime.datetime.fromtimestamp(
                     os.path.getmtime(file_path))
-                #r = relativedelta.relativedelta(now, timestamp)
-                #if r.years * 12 + r.months > month:
+                # r = relativedelta.relativedelta(now, timestamp)
+                # if r.years * 12 + r.months > month:
                 diff = (now - timestamp).days
                 if diff > day:
-                    self.file_list.append(file_path)
-    def getPathFileNum(self, now, day, path_one, path_two):
+                    file_list.append(file_path)
+
+    def getPathFileNum(self, now, day, path_one, path_two, file_list, dir_list):
         # caculate path_one
-        self.pathFileDeal(now, day, path_one)
+        self.pathFileDeal(now, day, path_one, file_list, dir_list)
 
         # caculate path_two
         if os.path.exists(path_two):
@@ -355,50 +370,70 @@ class MainWindow(Window):
                     cmonth = int(dirlist[i].split('-', 1)[1])
                     diff = (now.year - cyear) * 12 + now.month - cmonth
                     if diff > month:
-                        self.dir_list.append(file_path)
+                        dir_list.append(file_path)
                     elif diff == month:
-                        self.pathFileDeal(now, day, file_path)
-                        #print("delete:", file_path)
+                        self.pathFileDeal(now, day, file_path, file_list, dir_list)
+                        # print("delete:", file_path)
 
-    def callin(self):
-        #另起一个线程来实现删除文件和更新进度条
-        self.calc = deleteThread(self.file_list, self.dir_list)
-        self.calc.delete_proess_signal.connect(self.callback)
-        self.calc.start()
-        #self.calc.exec()
-    def callback(self, value):
+    # def callin(self, file_list, dir_list):
+    #     #另起一个线程来实现删除文件和更新进度条
+    #     self.calc = deleteThread(self.file_list, self.dir_list)
+    #     self.calc.delete_proess_signal.connect(self.callback)
+    #     self.calc.start()
+    #     #self.calc.exec()
+
+    def callback(self, v):
+        print('got v', v)
+        value = v / int((self.total_file + self.total_dir)) * 100
         self.bar_progress.setValue(value)
+        print('got value', value)
         if value == 100:
-            out = "本次共清理文件" + str(len(self.file_list)) + "个，文件夹" + str(
-                len(self.dir_list)) + "个。请前往回收站检查并清空。"
+            out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(self.total_dir) + "个。请前往回收站检查并清空。"
             self.setSuccessinfo(out)
             return
-    def justdoit(self): # 这个Api设计的太脑残了，其实dir可以直接放在user里的... 有时间改吧
-        self.file_list = []
-        self.dir_list = []
-        self.config = open(working_dir+"/config.json", encoding="utf-8")
-        self.config = json.load(self.config)
+
+    def justdoit(self):  # 这个Api设计的太脑残了，其实dir可以直接放在user里的... 有时间改吧
+        fd = open(working_dir + "/config.json", encoding="utf-8")
+        self.config = json.load(fd)
         i = 0
+        need_clean = False
+        thread_list = []
+        total_file = 0
+        total_dir = 0
+        share_thread_arr = [0]
         for value in self.config["users"]:
+            file_list = []
+            dir_list = []
             if value["is_clean"]:
-                self.get_fileNum(self.config["data_dir"][i], int(value["clean_days"]), value["clean_pic_cache"],value["clean_file"], value["clean_pic"], value["clean_video"])
+                self.get_fileNum(self.config["data_dir"][i], int(value["clean_days"]), value["clean_pic_cache"],
+                                 value["clean_file"], value["clean_pic"], value["clean_video"], file_list, dir_list)
+
+            if len(file_list) + len(dir_list) != 0:
+                need_clean = True
+                total_file += len(file_list)
+                total_dir += len(dir_list)
+                thread_list.append(multiDeleteThread(file_list, dir_list, share_thread_arr))
+                thread_list[-1].delete_process_signal.connect(self.callback)
             i = i + 1
-                
-            if len(self.file_list) + len(self.dir_list) == 0:
-                self.setWarninginfo("没有需要清理的文件")
-                
-            self.callin()
+
+        if not need_clean:
+            self.setWarninginfo("没有需要清理的文件")
+        else:
+            self.total_file = total_file
+            self.total_dir = total_dir
+            for thread in thread_list:
+                thread.run()
 
     def __init__(self):
         super().__init__()
-        loadUi(working_dir+"/ui/main.ui", self)
+        loadUi(working_dir + "/ui/main.ui", self)
 
         self._frame()
         self._eventfilter()
         self.doFadeIn()
 
         # 判断配置文件是否存在
-        if not os.path.exists(working_dir+"/config.json"):
+        if not os.path.exists(working_dir + "/config.json"):
             self.setWarninginfo("配置文件不存在！请单击“设置”创建配置文件")
 
         self.show()
