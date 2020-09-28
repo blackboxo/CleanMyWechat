@@ -1,3 +1,5 @@
+import sys
+
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsDropShadowEffect, QListWidgetItem, QListView, QWidget, QLabel, QHBoxLayout, QFileDialog
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint
 from PyQt5.QtGui import QMouseEvent, QCursor, QColor
@@ -226,6 +228,9 @@ class ConfigWindow(Window):
         self.show()
 
 class MainWindow(Window):
+
+    def closeEvent(self, event):
+        sys.exit(0)
 
     def eventFilter(self, object, event):
         if event.type() == QEvent.MouseButtonPress:
