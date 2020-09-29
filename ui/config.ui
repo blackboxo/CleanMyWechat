@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>441</width>
+    <width>650</width>
     <height>399</height>
    </rect>
   </property>
@@ -102,7 +102,7 @@
           <widget class="QLineEdit" name="line_gobackdays">
            <property name="minimumSize">
             <size>
-             <width>0</width>
+             <width>70</width>
              <height>35</height>
             </size>
            </property>
@@ -146,7 +146,7 @@
           <widget class="QComboBox" name="combo_user">
            <property name="minimumSize">
             <size>
-             <width>0</width>
+             <width>70</width>
              <height>35</height>
             </size>
            </property>
@@ -166,7 +166,7 @@
 	border:1px solid #d9d9d9;
 	border-radius:3px;
 	line-height: 140px;
-	padding:5px;
+	padding:5px 20px;
 	color: #434343;
 }
 .QComboBox::drop-down {
