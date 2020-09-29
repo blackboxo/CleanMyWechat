@@ -338,33 +338,27 @@ class MainWindow(Window):
 
     def pathFileDeal(self, now, day, path, file_list, dir_list):
         if os.path.exists(path):
-            list = os.listdir(path)
-            filelist = []
-            for i in range(0, len(list)):
-                file_path = os.path.join(path, list[i])
-                if os.path.isfile(file_path):
-                    filelist.append(list[i])
+            filelist = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
             for i in range(0, len(filelist)):
                 file_path = os.path.join(path, filelist[i])
                 if os.path.isdir(file_path):
                     continue
                 timestamp = datetime.datetime.fromtimestamp(
                     os.path.getmtime(file_path))
-                # r = relativedelta.relativedelta(now, timestamp)
-                # if r.years * 12 + r.months > month:
                 diff = (now - timestamp).days
-                if diff > day:
+                if diff >= day:
                     file_list.append(file_path)
 
     def getPathFileNum(self, now, day, path_one, path_two, file_list, dir_list):
         # caculate path_one
         self.pathFileDeal(now, day, path_one, file_list, dir_list)
-
+        td = datetime.datetime.now() - datetime.timedelta(days=day)
+        td_year =  td.year
+        td_month = td.month
         # caculate path_two
         if os.path.exists(path_two):
             osdir = os.listdir(path_two)
             dirlist = []
-            month = math.ceil(day / 29)
             for i in range(0, len(osdir)):
                 file_path = os.path.join(path_two, osdir[i])
                 if os.path.isdir(file_path):
@@ -376,18 +370,18 @@ class MainWindow(Window):
                 if re.match('\d{4}(\-)\d{2}', dirlist[i]) != None:
                     cyear = int(dirlist[i].split('-', 1)[0])
                     cmonth = int(dirlist[i].split('-', 1)[1])
-                    diff = (now.year - cyear) * 12 + now.month - cmonth
-                    if diff > month:
+                    if self.__before_deadline(cyear, cmonth, td_year, td_month):
                         dir_list.append(file_path)
-                    elif diff == month:
-                        self.pathFileDeal(now, day, file_path, file_list, dir_list)
+                    else:
+                        if cmonth == td_month:
+                            self.pathFileDeal(now, day, file_path, file_list, dir_list)
 
-    # def callin(self, file_list, dir_list):
-    #     #另起一个线程来实现删除文件和更新进度条
-    #     self.calc = deleteThread(self.file_list, self.dir_list)
-    #     self.calc.delete_proess_signal.connect(self.callback)
-    #     self.calc.start()
-    #     #self.calc.exec()
+
+    def __before_deadline(self,cyear, cmonth, td_year, td_month):
+        if cyear < td_year:
+            return True
+        else:
+            return cmonth < td_month
 
     def callback(self, v):
         value = v / int((self.total_file + self.total_dir)) * 100
