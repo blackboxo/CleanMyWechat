@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>650</width>
-    <height>399</height>
+    <height>416</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -98,50 +98,6 @@
          <property name="sizeConstraint">
           <enum>QLayout::SetDefaultConstraint</enum>
          </property>
-         <item>
-          <widget class="QLineEdit" name="line_gobackdays">
-           <property name="minimumSize">
-            <size>
-             <width>70</width>
-             <height>35</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>60</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QLineEdit {
-	border:1px solid #d9d9d9;
-	border-radius:3px;
-	line-height: 140px;
-	padding: 5px;
-	color: #434343;
-}
-
-.QLineEdit:hover {
-	border:1px solid #40a9ff;
-	border-radius:3px;
-	line-height: 140px;
-	padding: 5px;
-	color: #434343;
-}</string>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="placeholderText">
-            <string>回退日</string>
-           </property>
-          </widget>
-         </item>
          <item>
           <widget class="QComboBox" name="combo_user">
            <property name="minimumSize">
@@ -555,6 +511,107 @@ QCheckBox::indicator::checked {
          </item>
          <item>
           <spacer name="horizontalSpacer_10">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0,0">
+         <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Maximum</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>80</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_2">
+           <property name="font">
+            <font>
+             <family>Microsoft YaHei</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>需要删除多久以前的文件：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="line_gobackdays">
+           <property name="minimumSize">
+            <size>
+             <width>70</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>60</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <family>微软雅黑</family>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">.QLineEdit {
+	border:1px solid #d9d9d9;
+	border-radius:3px;
+	line-height: 140px;
+	padding: 5px;
+	color: #434343;
+}
+
+.QLineEdit:hover {
+	border:1px solid #40a9ff;
+	border-radius:3px;
+	line-height: 140px;
+	padding: 5px;
+	color: #434343;
+}</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="placeholderText">
+            <string>天数</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_3">
+           <property name="font">
+            <font>
+             <family>Microsoft YaHei</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>天</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_4">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
