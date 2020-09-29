@@ -277,8 +277,7 @@ class ConfigWindow(Window):
 
 
 class MainWindow(Window):
-    config_exists = False
-    
+
     def deal_emit_slot(self, set_status):
         if set_status and not self.config_exists:
             self.setSuccessinfo("已经准备好，可以开始了！")
@@ -444,6 +443,7 @@ class MainWindow(Window):
         self._frame()
         self._eventfilter()
         self.doFadeIn()
+        self.config_exists = True
 
         # 判断配置文件是否存在
         if not os.path.exists(working_dir + "/config.json"):
