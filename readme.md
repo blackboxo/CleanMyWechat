@@ -19,15 +19,16 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v1.2/AutoDeleteFile
 
 
 ## 特性
-1. 自动识别各个微信版本的默认存储路径，无需用户输入，且支持用户自定义的路径；
-2. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
-3. 自由设置需要删除的文件的距离时间，默认 365 天；
-4. 删除后的文件放置在回收站中，检查后自行清空，防止删错需要的文件；
-5. 支持删除进度的显示；
+1. 自动识别微信账号，支持用户选择自定义路径；
+2. 同时管理多个账号，保留配置参数，打开即用；
+3. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
+4. 自由设置需要删除的文件的距离时间，默认 365 天；
+5. 删除后的文件放置在回收站中，检查后自行清空，防止删错需要的文件；
+6. 支持删除进度的显示；
 
 ## 运行截图
 
-![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/20200229191711.png)
+![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/20200929151623.jpg)
 
 ## 微信现状
 
@@ -39,10 +40,10 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v1.2/AutoDeleteFile
 
 欢迎 PR！都会写进致谢！
 
-- [ ] 自动识别出的多个微信账号的路径，让用户选择哪几个账号的需要删除，并记录参数
+- [x] ~~自动识别出的多个微信账号的路径，让用户选择哪几个账号的需要删除，并记录参数~~
 - [ ] 有用户有每日定时删除的需求，考虑让应用开机自启动并常驻后台，或者“将选项变成参数加到快捷方式里运行自动执行”
 - [ ] 增加企业微信的支持
-- [ ] Windows XP 系统的支持（当前打包方式为 PyQt5 + pyinstaller）
+- [ ] Windows XP 系统的支持（当前打包方式为 PyQt5 + pyinstaller），打包命令为 pyinstaller -F -i icon.ico -w ngui.py
 - [ ] 增加应用打包后的签名
 - [x] ~~更改为以天为单位~~
 - [x] ~~增加多个微信路径的支持，支持保存路径~~
@@ -57,6 +58,10 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v1.2/AutoDeleteFile
 [@Gears](https://refun.eu.org)：提供微信 for Windows 版本的文件目录树及测试支持
 
 @SongJee：版本 1.1 的主要开发者，增加进度条，支持多个微信版本，自动识别路径
+
+[@LenmoisLemon](https://github.com/LenmoisLemon)：版本 2.0 的主要开发者，全新 UI 设计，增加多用户配置
+
+[@Louhwz](https://github.com/Louhwz)：版本 2.0 的主要开发者，增加多用户支持、多线程删除、自定义路径等
 
 ## 开发者
 
