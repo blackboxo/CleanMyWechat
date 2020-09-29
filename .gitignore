@@ -4,3 +4,7 @@ build/
 config.json
 
 .idea/
+
+CleanMyWechat.zip
+ngui.py.spec
+ngui.spec

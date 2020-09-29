@@ -142,7 +142,7 @@ class ConfigWindow(Window):
                     user_config.append({
                         "wechat_id": user_wx_id,
                         "clean_days": "365",
-                        "is_clean": True,
+                        "is_clean": False,
                         "clean_pic_cache": True,
                         "clean_file": True,
                         "clean_pic": True,
