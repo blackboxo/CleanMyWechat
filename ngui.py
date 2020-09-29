@@ -20,7 +20,6 @@ working_dir = os.path.split(os.path.realpath(__file__))[0]
 
 # 主窗口
 class Window(QMainWindow):
-
     def mousePressEvent(self, event):
         # 重写一堆方法使其支持拖动
         if event.button() == Qt.LeftButton:
@@ -78,8 +77,7 @@ class Window(QMainWindow):
         self.animation.start()
 
     def setWarninginfo(self, text):
-        self.lab_info.setStyleSheet(
-            """
+        self.lab_info.setStyleSheet("""
             .QLabel {
                 border:1px solid #ffccc7;
                 border-radius:3px;
@@ -88,13 +86,11 @@ class Window(QMainWindow):
                 color: #434343;
                 background: #fff2f0;
             }
-            """
-        )
+            """)
         self.lab_info.setText(text)
 
     def setSuccessinfo(self, text):
-        self.lab_info.setStyleSheet(
-            """
+        self.lab_info.setStyleSheet("""
             .QLabel {
                 border:1px solid #b7eb8f;
                 border-radius:3px;
@@ -103,8 +99,7 @@ class Window(QMainWindow):
                 color: #434343;
                 background: #f6ffed;
             }
-            """
-        )
+            """)
         self.lab_info.setText(text)
 
 
@@ -116,7 +111,6 @@ class ConfigWindow(Window):
         self.btn_close.clicked.connect(self.save_config)
         self.btn_file.clicked.connect(self.open_file)
 
-
     def open_file(self):
         openfile_path = QFileDialog.getExistingDirectory(self, '选择微信数据目录', '')
         if not openfile_path or openfile_path == '':
@@ -124,7 +118,10 @@ class ConfigWindow(Window):
         if check_dir(openfile_path) == 0:
             self.setSuccessinfo('读取路径成功！')
             list_ = os.listdir(openfile_path)
-            user_list = [elem for elem in list_ if elem != 'All Users' and elem != 'Applet']
+            user_list = [
+                elem for elem in list_
+                if elem != 'All Users' and elem != 'Applet'
+            ]
             # 如果已有用户配置，那么写入新的用户配置，否则默认写入新配置
             dir_list = []
             user_config = []
@@ -146,12 +143,10 @@ class ConfigWindow(Window):
                         "timer": "0h"
                     })
 
-            config = {
-                "data_dir": dir_list,
-                "users": user_config
-            }
+            config = {"data_dir": dir_list, "users": user_config}
 
-            with open(working_dir + "/config.json", "w", encoding="utf-8") as f:
+            with open(
+                    working_dir + "/config.json", "w", encoding="utf-8") as f:
                 json.dump(config, f)
             self.load_config()
         else:
@@ -178,12 +173,14 @@ class ConfigWindow(Window):
         for value in self.config["users"]:
             self.combo_user.addItem(value["wechat_id"])
 
-        self.line_gobackdays.setText(str(self.config["users"][0]["clean_days"]))
+        self.line_gobackdays.setText(
+            str(self.config["users"][0]["clean_days"]))
         self.check_is_clean.setChecked(self.config["users"][0]["is_clean"])
         self.check_picdown.setChecked(self.config["users"][0]["clean_pic"])
         self.check_files.setChecked(self.config["users"][0]["clean_file"])
         self.check_video.setChecked(self.config["users"][0]["clean_video"])
-        self.check_picscache.setChecked(self.config["users"][0]["clean_pic_cache"])
+        self.check_picscache.setChecked(
+            self.config["users"][0]["clean_pic_cache"])
         self.setSuccessinfo("加载配置文件成功")
 
     def refresh_ui(self):
@@ -222,10 +219,7 @@ class ConfigWindow(Window):
                         self.setWarninginfo("目录非微信数据目录，请检查")
                     return
 
-            self.config = {
-                "data_dir": self.version_scan,
-                "users": []
-            }
+            self.config = {"data_dir": self.version_scan, "users": []}
             for value in self.users_scan:
                 self.config["users"].append({
                     "wechat_id": value,
@@ -238,7 +232,8 @@ class ConfigWindow(Window):
                     "is_timer": true,
                     "timer": "0h"
                 })
-            with open(working_dir + "/config.json", "w", encoding="utf-8") as f:
+            with open(
+                    working_dir + "/config.json", "w", encoding="utf-8") as f:
                 json.dump(self.config, f)
             self.load_config()
             self.setSuccessinfo("加载配置文件成功")
@@ -258,13 +253,13 @@ class ConfigWindow(Window):
                 except ValueError:
                     value["clean_days"] = "0"
                 value["is_clean"] = self.check_is_clean.isChecked()
-                value["clean_pic"] = self.check_picdown.isChecked() 
-                value["clean_file"] = self.check_files.isChecked() 
-                value["clean_video"] = self.check_video.isChecked() 
-                value["clean_pic_cache"] = self.check_picscache.isChecked() 
-        
-        with open(working_dir+"/config.json","w",encoding="utf-8") as f:
-            json.dump(self.config,f)
+                value["clean_pic"] = self.check_picdown.isChecked()
+                value["clean_file"] = self.check_files.isChecked()
+                value["clean_video"] = self.check_video.isChecked()
+                value["clean_pic_cache"] = self.check_picscache.isChecked()
+
+        with open(working_dir + "/config.json", "w", encoding="utf-8") as f:
+            json.dump(self.config, f)
         self.setSuccessinfo("更新配置文件成功")
         self.Signal_OneParameter.emit(1)
 
@@ -282,6 +277,8 @@ class ConfigWindow(Window):
 
 
 class MainWindow(Window):
+    config_exists = False
+    
     def deal_emit_slot(self, set_status):
         if set_status and not self.config_exists:
             self.setSuccessinfo("已经准备好，可以开始了！")
@@ -323,23 +320,30 @@ class MainWindow(Window):
         if picCacheCheck:
             path_one = correct_path / 'Attachment'
             path_two = correct_path / 'FileStorage/Cache'
-            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
+            self.getPathFileNum(now, day, path_one, path_two, file_list,
+                                dir_list)
         if fileCheck:
             path_one = correct_path / 'Files'
             path_two = correct_path / 'FileStorage/File'
-            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
+            self.getPathFileNum(now, day, path_one, path_two, file_list,
+                                dir_list)
         if picCheck:
             path_one = correct_path / 'Image/Image'
             path_two = correct_path / 'FileStorage/Image'
-            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
+            self.getPathFileNum(now, day, path_one, path_two, file_list,
+                                dir_list)
         if videoCheck:
             path_one = correct_path / 'Video'
             path_two = correct_path / 'FileStorage/Video'
-            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
+            self.getPathFileNum(now, day, path_one, path_two, file_list,
+                                dir_list)
 
     def pathFileDeal(self, now, day, path, file_list, dir_list):
         if os.path.exists(path):
-            filelist = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+            filelist = [
+                f for f in os.listdir(path)
+                if os.path.isfile(os.path.join(path, f))
+            ]
             for i in range(0, len(filelist)):
                 file_path = os.path.join(path, filelist[i])
                 if os.path.isdir(file_path):
@@ -350,11 +354,12 @@ class MainWindow(Window):
                 if diff >= day:
                     file_list.append(file_path)
 
-    def getPathFileNum(self, now, day, path_one, path_two, file_list, dir_list):
+    def getPathFileNum(self, now, day, path_one, path_two, file_list,
+                       dir_list):
         # caculate path_one
         self.pathFileDeal(now, day, path_one, file_list, dir_list)
         td = datetime.datetime.now() - datetime.timedelta(days=day)
-        td_year =  td.year
+        td_year = td.year
         td_month = td.month
         # caculate path_two
         if os.path.exists(path_two):
@@ -371,23 +376,28 @@ class MainWindow(Window):
                 if re.match('\d{4}(\-)\d{2}', dirlist[i]) != None:
                     cyear = int(dirlist[i].split('-', 1)[0])
                     cmonth = int(dirlist[i].split('-', 1)[1])
-                    if self.__before_deadline(cyear, cmonth, td_year, td_month):
+                    if self.__before_deadline(cyear, cmonth, td_year,
+                                              td_month):
                         dir_list.append(file_path)
                     else:
                         if cmonth == td_month:
-                            self.pathFileDeal(now, day, file_path, file_list, dir_list)
+                            self.pathFileDeal(now, day, file_path, file_list,
+                                              dir_list)
 
-    def __before_deadline(self,cyear, cmonth, td_year, td_month):
+    def __before_deadline(self, cyear, cmonth, td_year, td_month):
         if cyear < td_year:
             return True
-        else:
+        elif cyear > td_year:
+            return False
+        elif cyear == td_year:
             return cmonth < td_month
 
     def callback(self, v):
         value = v / int((self.total_file + self.total_dir)) * 100
         self.bar_progress.setValue(value)
         if value == 100:
-            out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(self.total_dir) + "个。请前往回收站检查并清空。"
+            out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(
+                self.total_dir) + "个。请前往回收站检查并清空。"
             self.setSuccessinfo(out)
             return
 
@@ -404,14 +414,18 @@ class MainWindow(Window):
             file_list = []
             dir_list = []
             if value["is_clean"]:
-                self.get_fileNum(self.config["data_dir"][i], int(value["clean_days"]), value["clean_pic_cache"],
-                                 value["clean_file"], value["clean_pic"], value["clean_video"], file_list, dir_list)
+                self.get_fileNum(self.config["data_dir"][i],
+                                 int(value["clean_days"]),
+                                 value["clean_pic_cache"], value["clean_file"],
+                                 value["clean_pic"], value["clean_video"],
+                                 file_list, dir_list)
 
             if len(file_list) + len(dir_list) != 0:
                 need_clean = True
                 total_file += len(file_list)
                 total_dir += len(dir_list)
-                thread_list.append(multiDeleteThread(file_list, dir_list, share_thread_arr))
+                thread_list.append(
+                    multiDeleteThread(file_list, dir_list, share_thread_arr))
                 thread_list[-1].delete_process_signal.connect(self.callback)
             i = i + 1
 
