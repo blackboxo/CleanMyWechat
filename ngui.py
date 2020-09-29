@@ -109,18 +109,13 @@ class Window(QMainWindow):
 
 
 class ConfigWindow(Window):
+    Signal_OneParameter = pyqtSignal(int)
+
     def _connect(self):
         self.combo_user.currentIndexChanged.connect(self.refresh_ui)
-        # self.line_wechat.textChanged.connect(self.create_config)
         self.btn_close.clicked.connect(self.save_config)
         self.btn_file.clicked.connect(self.open_file)
 
-        # self.check_is_clean.stateChanged.connect(self.update_config)
-        # self.check_picdown.stateChanged.connect(self.update_config)
-        # self.check_files.stateChanged.connect(self.update_config)
-        # self.check_video.stateChanged.connect(self.update_config)
-        # self.check_picscache.stateChanged.connect(self.update_config)
-        # self.line_gobackdays.textChanged.connect(self.update_config)
 
     def open_file(self):
         openfile_path = QFileDialog.getExistingDirectory(self, '选择微信数据目录', '')
@@ -271,6 +266,7 @@ class ConfigWindow(Window):
         with open(working_dir+"/config.json","w",encoding="utf-8") as f:
             json.dump(self.config,f)
         self.setSuccessinfo("更新配置文件成功")
+        self.Signal_OneParameter.emit(1)
 
     def __init__(self):
         super().__init__()
@@ -286,6 +282,10 @@ class ConfigWindow(Window):
 
 
 class MainWindow(Window):
+    def deal_emit_slot(self, set_status):
+        if set_status and not self.config_exists:
+            self.setSuccessinfo("已经准备好，可以开始了！")
+            self.config_exists = True
 
     def closeEvent(self, event):
         sys.exit(0)
@@ -303,7 +303,8 @@ class MainWindow(Window):
                     self.setWarninginfo("清理失败，请检查配置文件后重试")
                 return True
             elif object == self.lab_config:
-                win = ConfigWindow()
+                cw = ConfigWindow()
+                cw.Signal_OneParameter.connect(self.deal_emit_slot)
                 return True
         return False
 
@@ -376,7 +377,6 @@ class MainWindow(Window):
                         if cmonth == td_month:
                             self.pathFileDeal(now, day, file_path, file_list, dir_list)
 
-
     def __before_deadline(self,cyear, cmonth, td_year, td_month):
         if cyear < td_year:
             return True
@@ -434,6 +434,7 @@ class MainWindow(Window):
         # 判断配置文件是否存在
         if not os.path.exists(working_dir + "/config.json"):
             self.setWarninginfo("配置文件不存在！请单击“设置”创建配置文件")
+            self.config_exists = False
 
         self.show()
 
