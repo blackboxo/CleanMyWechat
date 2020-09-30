@@ -11,7 +11,7 @@
 **现已经支持 Windows 系统中的所有微信版本。**
 
 [国内地址 - 点击下载](
-https://wwe.lanzous.com/iqKQyh1apxg)
+https://www.lanzoux.com/iamuhh1owmb)
 
 [Github Release - 点击下载](
 https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.zip)
