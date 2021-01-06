@@ -70,3 +70,7 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.
 邮箱：18110240013@fudan.edu.cn
 
 Blog：https://www.blackboxo.top/
+
+## 项目 Star 数
+
+[![Stargazers over time](https://starchart.cc/blackboxo/CleanMyWechat.svg)](https://starchart.cc/blackboxo/CleanMyWechat)
