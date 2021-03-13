@@ -8,12 +8,13 @@ from PyQt5.uic import loadUi
 
 from pathlib import Path, PureWindowsPath
 from dateutil import relativedelta
-import os, datetime, time, re, math, resources, shutil, json
+import utils.resources
+import os, datetime, time, re, math, shutil, json
 
-from deleteThread import *
-from multiDeleteThread import multiDeleteThread
-from selectVersion import *
-from selectVersion import check_dir, existing_user_config
+from utils.deleteThread import *
+from utils.multiDeleteThread import multiDeleteThread
+from utils.selectVersion import *
+from utils.selectVersion import check_dir, existing_user_config
 
 working_dir = os.path.split(os.path.realpath(__file__))[0]
 
@@ -254,7 +255,7 @@ class ConfigWindow(Window):
 
     def __init__(self):
         super().__init__()
-        loadUi(working_dir + "/ui/config.ui", self)
+        loadUi(working_dir + "/images/config.ui", self)
 
         self._frame()
         self._connect()
@@ -427,7 +428,7 @@ class MainWindow(Window):
 
     def __init__(self):
         super().__init__()
-        loadUi(working_dir + "/ui/main.ui", self)
+        loadUi(working_dir + "/images/main.ui", self)
 
         self._frame()
         self._eventfilter()
