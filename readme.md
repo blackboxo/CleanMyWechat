@@ -16,7 +16,7 @@ https://www.lanzoux.com/iamuhh1owmb)
 [Github Release - 点击下载](
 https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.zip)
 
-
+**碰到无法清理的，请记得勾选第一个选项，勾选后才会清理该账号下的内容。**
 
 ## 特性
 1. 自动识别微信账号，支持用户选择自定义路径；
