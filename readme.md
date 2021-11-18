@@ -18,6 +18,8 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.
 
 **碰到无法清理的，请记得勾选第一个选项，勾选后才会清理该账号下的内容。**
 
+### [请我喝咖啡:coffee:](https://dun.mianbaoduo.com/@blackboxo)
+
 ## 特性
 1. 自动识别微信账号，支持用户选择自定义路径；
 2. 同时管理多个账号，保留配置参数，打开即用；
@@ -70,10 +72,6 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.
 邮箱：18110240013@fudan.edu.cn
 
 Blog：https://www.blackboxo.top/
-
-## [请我喝咖啡:coffee:](https://dun.mianbaoduo.com/@blackboxo)
-
-[:coffee:](https://dun.mianbaoduo.com/@blackboxo)
 
 ## 项目 Star 数
 
