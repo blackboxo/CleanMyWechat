@@ -71,6 +71,10 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.
 
 Blog：https://www.blackboxo.top/
 
+## [请我喝咖啡:coffee:](https://dun.mianbaoduo.com/@blackboxo)
+
+[:coffee:](https://dun.mianbaoduo.com/@blackboxo)
+
 ## 项目 Star 数
 
 [![Stargazers over time](https://starchart.cc/blackboxo/CleanMyWechat.svg)](https://starchart.cc/blackboxo/CleanMyWechat)
