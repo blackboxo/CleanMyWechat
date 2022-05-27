@@ -40,12 +40,14 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.
 
 ## 待改进
 
-欢迎 PR！都会写进致谢！
+欢迎 PR！
 
+- [ ] Bug：由于微信文件保存路径更改等导致的空配置文件 config.json 引起的闪退，可以考虑读取注册表，详见此 [Issue](https://github.com/blackboxo/CleanMyWechat/issues/45)
+- [ ] 界面逻辑优化 [Issue](https://github.com/blackboxo/CleanMyWechat/issues/31)
 - [ ] Mac 版本的开发，微信 Mac 版存在缓存大量占用问题
-- [ ] 有用户有每日定时删除的需求，考虑让应用开机自启动并常驻后台，或者“将选项变成参数加到快捷方式里运行自动执行”
 - [ ] 增加企业微信的支持
 - [ ] Windows XP 系统的支持
+- [ ] 有用户有每日定时删除的需求，考虑让应用开机自启动并常驻后台，或者“将选项变成参数加到快捷方式里运行自动执行”
 - [ ] 增加应用打包后的签名
 - [x] ~~自动识别出的多个微信账号的路径，让用户选择哪几个账号的需要删除，并记录参数~~
 - [x] ~~更改为以天为单位~~
@@ -53,10 +55,11 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.
 - [x] ~~支持 Microsoft Store 下载的微信 for Windows 版本~~
 - [x] ~~支持 Microsoft Store 下载的微信 UWP 版本~~
 
+其他需求详见 Issue
 
 ## 打包 EXE 方式
 
-执行 pyinstaller -F -i icon.ico -w main.py， 会生成 dist 文件夹
+执行 pyinstaller -F -i images/icon.ico -w main.py， 会生成 dist 文件夹
 
 将 images 文件夹拷贝到 dist 文件夹下，运行 dist/main.exe 即可执行。
 
@@ -76,7 +79,7 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.
 
 微博：@BlackBoXo
 
-邮箱：18110240013@fudan.edu.cn
+邮箱：bwu18@fudan.edu.cn
 
 Blog：https://www.blackboxo.top/
 
