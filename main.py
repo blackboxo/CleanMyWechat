@@ -16,8 +16,12 @@ from utils.multiDeleteThread import multiDeleteThread
 from utils.selectVersion import *
 from utils.selectVersion import check_dir, existing_user_config
 
-working_dir = os.path.split(os.path.realpath(__file__))[0]
 
+# determine if application is a script file or frozen exe
+if getattr(sys, 'frozen', False):
+    working_dir = os.path.dirname(os.path.realpath(sys.executable))
+elif __file__:
+    working_dir = os.path.split(os.path.realpath(__file__))[0]
 
 # 主窗口
 class Window(QMainWindow):
@@ -390,7 +394,7 @@ class MainWindow(Window):
             self.setSuccessinfo(out)
             return
 
-    def justdoit(self):  # 这个Api设计的太脑残了，其实dir可以直接放在user里的... 有时间改吧
+    def justdoit(self): 
         fd = open(working_dir + "/config.json", encoding="utf-8")
         self.config = json.load(fd)
         i = 0
