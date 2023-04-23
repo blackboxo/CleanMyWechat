@@ -82,8 +82,6 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.0/CleanMyWechat.
 
 Blog：https://www.blackboxo.top/
 
-## 项目 Star 数
-
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=blackboxo/CleanMyWechat&type=Date)](https://star-history.com/#blackboxo/CleanMyWechat&Date)
