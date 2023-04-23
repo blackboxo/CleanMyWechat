@@ -84,4 +84,6 @@ Blog：https://www.blackboxo.top/
 
 ## 项目 Star 数
 
-[![Stargazers over time](https://starchart.cc/blackboxo/CleanMyWechat.svg)](https://starchart.cc/blackboxo/CleanMyWechat)
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=blackboxo/CleanMyWechat&type=Date)](https://star-history.com/#blackboxo/CleanMyWechat&Date)
