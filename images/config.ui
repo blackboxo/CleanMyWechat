@@ -397,7 +397,7 @@ QCheckBox::indicator::checked {
 }</string>
            </property>
            <property name="text">
-            <string>接受的文件（PPT、Doc 等）</string>
+            <string>接收的文件（PPT、Doc 等）</string>
            </property>
           </widget>
          </item>
