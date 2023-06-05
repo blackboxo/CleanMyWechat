@@ -287,7 +287,7 @@ QCheckBox::indicator::checked {
 }</string>
            </property>
            <property name="text">
-            <string>是否清理该账号</string>
+            <string>是否对该账号进行下列内容的清理</string>
            </property>
           </widget>
          </item>
@@ -306,6 +306,40 @@ QCheckBox::indicator::checked {
          </item>
         </layout>
        </item>
+
+        <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_100">
+         <item>
+          <spacer name="horizontalSpacer_100">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Maximum</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>80</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_2">
+           <property name="font">
+            <font>
+             <family>Microsoft YaHei</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>请勾选你要清理的文件格式：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+        </item>
+       
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_7">
          <item>
@@ -550,7 +584,7 @@ QCheckBox::indicator::checked {
             </font>
            </property>
            <property name="text">
-            <string>需要删除多久以前的文件：</string>
+            <string>需要保留多久以内的文件：</string>
            </property>
           </widget>
          </item>
@@ -651,7 +685,7 @@ QCheckBox::indicator::checked {
 }</string>
          </property>
          <property name="text">
-          <string>Clean My Wechat - 设置页面</string>
+          <string>Clean My Wechat V2.1 - 设置页面</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>

@@ -441,7 +441,7 @@ QProgressBar::chunk {
 }</string>
          </property>
          <property name="text">
-          <string>Clean My Wechat - 清除微信无用数据</string>
+          <string>Clean My Wechat V2.1 - 清除微信无用数据</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>

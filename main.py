@@ -2,7 +2,7 @@ import sys
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsDropShadowEffect, QListWidgetItem, QListView, QWidget, \
     QLabel, QHBoxLayout, QFileDialog
-from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint
+from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint, QTimer
 from PyQt5.QtGui import QMouseEvent, QCursor, QColor
 from PyQt5.uic import loadUi
 
@@ -127,7 +127,7 @@ class ConfigWindow(Window):
             list_ = os.listdir(openfile_path)
             user_list = [
                 elem for elem in list_
-                if elem != 'All Users' and elem != 'Applet'
+                if elem != 'All Users' and elem != 'Applet' and elem != 'WMPF'
             ]
             # 如果已有用户配置，那么写入新的用户配置，否则默认写入新配置
             dir_list = []
@@ -141,7 +141,7 @@ class ConfigWindow(Window):
                     user_config.append({
                         "wechat_id": user_wx_id,
                         "clean_days": "365",
-                        "is_clean": False,
+                        "is_clean": True,
                         "clean_pic_cache": True,
                         "clean_file": False,
                         "clean_pic": True,
@@ -165,8 +165,9 @@ class ConfigWindow(Window):
 
     def check_wechat_exists(self):
         self.selectVersion = selectVersion()
-        self.version_scan = self.selectVersion.getAllPath()[0]
-        self.users_scan = self.selectVersion.getAllPath()[1]
+        self.scan = self.selectVersion.getAllPath()
+        self.version_scan = self.scan[0]
+        self.users_scan = self.scan[1]
         if len(self.version_scan) == 0:
             return False
         else:
@@ -188,7 +189,7 @@ class ConfigWindow(Window):
         self.check_video.setChecked(self.config["users"][0]["clean_video"])
         self.check_picscache.setChecked(
             self.config["users"][0]["clean_pic_cache"])
-        self.setSuccessinfo("加载配置文件成功")
+        self.setSuccessinfo("请确认每个账号的删除内容及时间，以防误删！")
 
     def refresh_ui(self):
         self.config = open(working_dir + "/config.json", encoding="utf-8")
@@ -204,7 +205,6 @@ class ConfigWindow(Window):
                 self.check_picscache.setChecked(value["clean_pic_cache"])
 
     def create_config(self):
-        true = True
         if not os.path.exists(working_dir + "/config.json"):
             if not self.check_wechat_exists():
                 self.setWarninginfo("默认位置没有微信，请自定义位置")
@@ -215,21 +215,21 @@ class ConfigWindow(Window):
                 self.config["users"].append({
                     "wechat_id": value,
                     "clean_days": 365,
-                    "is_clean": False,
-                    "clean_pic_cache": true,
+                    "is_clean": True,
+                    "clean_pic_cache": True,
                     "clean_file": False,
-                    "clean_pic": true,
-                    "clean_video": true,
-                    "is_timer": true,
+                    "clean_pic": True,
+                    "clean_video": True,
+                    "is_timer": True,
                     "timer": "0h"
                 })
             with open(
                     working_dir + "/config.json", "w", encoding="utf-8") as f:
                 json.dump(self.config, f)
             self.load_config()
-            self.setSuccessinfo("加载配置文件成功")
+            self.setSuccessinfo("请确认每个账号的删除内容及时间，以防误删！")
         else:
-            self.setSuccessinfo("加载配置文件成功")
+            self.setSuccessinfo("请确认每个账号的删除内容及时间，以防误删！")
             self.load_config()
 
     def update_config(self):
@@ -430,6 +430,10 @@ class MainWindow(Window):
             for thread in thread_list:
                 thread.run()
 
+    def show_config_window(self):
+        self.config_window = ConfigWindow()
+        self.setSuccessinfo("已经准备好，可以开始了！")
+
     def __init__(self):
         super().__init__()
         loadUi(working_dir + "/images/main.ui", self)
@@ -438,13 +442,19 @@ class MainWindow(Window):
         self._eventfilter()
         self.doFadeIn()
         self.config_exists = True
+        self.show()
 
         # 判断配置文件是否存在
         if not os.path.exists(working_dir + "/config.json"):
-            self.setWarninginfo("配置文件不存在！请单击“设置”创建配置文件")
+            self.setWarninginfo("首次使用，即将自动弹出配置窗口")
             self.config_exists = False
 
-        self.show()
+            timer = QTimer(self)
+            timer.timeout.connect(self.show_config_window)
+            timer.setSingleShot(True)  # 只执行一次
+            
+            # 设置定时器的时间间隔，这里设置为 1000ms（1秒）
+            timer.start(1000)
 
 
 if __name__ == '__main__':
