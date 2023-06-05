@@ -2,3 +2,4 @@ config.json
 build/
 dist/
 *.spec
+*.zip
