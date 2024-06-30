@@ -387,7 +387,7 @@ class MainWindow(Window):
 
     def callback(self, v):
         value = v / int((self.total_file + self.total_dir)) * 100
-        self.bar_progress.setValue(value)
+        self.bar_progress.setValue(int(value))
         if value == 100:
             out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(
                 self.total_dir) + "个。请前往回收站检查并清空。"
