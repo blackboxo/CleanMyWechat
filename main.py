@@ -92,6 +92,7 @@ class Window(QMainWindow):
                 background: #fff2f0;
             }
             """)
+        self.lab_info.setWordWrap(True)  # 启用自动换行
         self.lab_info.setText(text)
 
     def setSuccessinfo(self, text):
@@ -105,6 +106,7 @@ class Window(QMainWindow):
                 background: #f6ffed;
             }
             """)
+        self.lab_info.setWordWrap(True)  # 启用自动换行
         self.lab_info.setText(text)
 
 
@@ -157,7 +159,7 @@ class ConfigWindow(Window):
                 json.dump(config, f)
             self.load_config()
         else:
-            self.setWarninginfo('请选择正确的文件夹！一般是WeChat Files文件夹。')
+            self.setWarninginfo('请选择正确的文件夹！\n一般是WeChat Files文件夹。')
 
     def save_config(self):
         self.update_config()
@@ -390,7 +392,7 @@ class MainWindow(Window):
         self.bar_progress.setValue(int(value))
         if value == 100:
             out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(
-                self.total_dir) + "个。请前往回收站检查并清空。"
+                self.total_dir) + "个。\n请前往回收站检查并清空。"
             self.setSuccessinfo(out)
             return
 
