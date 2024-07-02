@@ -49,9 +49,12 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.
 
 ## 打包 EXE 方式
 
-执行 pyinstaller -F -i images/icon.ico -w main.py， 会生成 dist 文件夹
-
-将 images 文件夹拷贝到 dist 文件夹下，运行 dist/main.exe 即可执行。
+```Shell
+pip install -r requirements.txt
+pyinstaller -F -i images/icon.ico -w main.py
+cp -r images dist/
+./dist/main.exe
+```
 
 ## 致谢
 
