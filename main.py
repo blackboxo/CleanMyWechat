@@ -15,7 +15,9 @@ from utils.deleteThread import *
 from utils.multiDeleteThread import multiDeleteThread
 from utils.selectVersion import *
 from utils.selectVersion import check_dir, existing_user_config
-
+# 设置应用程序在高DPI屏幕上启用高DPI缩放。Set the application to enable high DPI scaling on high DPI screens
+# 注意事项：此行代码必须在QApplication实例化之前调用，否则会调用失败。Notes: This line of code must be called before the instantiation of the QApplication object; otherwise, it will fail
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 
 # determine if application is a script file or frozen exe
 if getattr(sys, 'frozen', False):
