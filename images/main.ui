@@ -335,6 +335,40 @@ QProgressBar::chunk {
           </widget>
          </item>
          <item>
+          <widget class="QLabel" name="lab_space">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>35</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">.QLabel {
+    color: rgba(0,0,0,.65);
+    background-color: #fff;
+    border: 1px solid #d9d9d9;
+	border-right: 0px; 
+	height: 24px;
+	font-size: 14px;
+	padding: 0px 10px;
+}
+.QLabel:hover {
+    color: #40a9ff;
+    background-color: #fff;
+    border: 1px solid #40a9ff;
+	height: 24px;
+	font-size: 14px
+}</string>
+           </property>
+           <property name="text">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;查看占用&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QLabel" name="lab_config">
            <property name="minimumSize">
             <size>
@@ -441,7 +475,7 @@ QProgressBar::chunk {
 }</string>
          </property>
          <property name="text">
-          <string>Clean My Wechat V2.1 - 清除微信无用数据</string>
+          <string>Clean My Wechat V2.2 - 清除微信无用数据</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
