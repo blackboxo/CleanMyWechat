@@ -18,18 +18,25 @@ https://wwvs.lanzouj.com/is77n0yap4dc)
 [Github Release - 点击下载](
 https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.zip)
 
-**碰到无法清理的，请记得勾选第一个选项，勾选后才会清理该账号下的内容。**
 
-## 特性
+## 特性**原作者：[blackboxo](https://github.com/blackboxo/CleanMyWechat)**
 1. 自动识别微信账号，支持用户选择自定义路径；
 2. 同时管理多个账号，保留配置参数，打开即用；
 3. 自由设置想要删除的文件类型，包括图片类缓存、文件、图片、视频；
 4. 自由设置需要删除的文件的距离时间，默认 365 天；
 5. 删除后的文件放置在回收站中，检查后自行清空，防止删错需要的文件；
 
-## 运行截图
+## v2.2 新增特性
+1. 新增支持v4新版pc微信的目录结构
+2. 重构设置窗口，更方便多微信账号清理设置
+3. 增加占用空间扫描功能，更方便查看微信文件占用空间
 
-![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/20200929151623.jpg)
+
+## v2.2 运行截图
+
+![](https://github.com/lsy9202/CleanMyWechat_Next/blob/master/images/PixPin_2025-12-10_12-35-48.png?raw=true)
+![](https://github.com/lsy9202/CleanMyWechat_Next/blob/master/images/PixPin_2025-12-10_12-37-11.png?raw=true)
+
 
 ## 微信现状
 
