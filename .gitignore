@@ -1,26 +1,5 @@
 config.json
-
-# Python compiled files
-*.pyc
-__pycache__/
-
-# IDE directories and files
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# Build directories
 build/
 dist/
 *.spec
-
-# OS generated files
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Log files
-*.log
-utils/__pycache__/*
+*.zip
