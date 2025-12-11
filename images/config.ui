@@ -685,7 +685,7 @@ QCheckBox::indicator::checked {
 }</string>
          </property>
          <property name="text">
-          <string>Clean My Wechat V2.2 - 设置页面</string>
+          <string>Clean My Wechat V2.1 - 设置页面</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
