@@ -14,7 +14,7 @@ import os, datetime, time, re, math, shutil, json
 from utils.deleteThread import *
 from utils.multiDeleteThread import multiDeleteThread
 from utils.selectVersion import *
-from utils.selectVersion import check_dir, existing_user_config
+from utils.selectVersion import check_dir, existing_user_config, find_all_wechat_paths
 from utils.scanThread import ScanThread
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
@@ -565,6 +565,72 @@ class MainWindow(Window):
         self.config_window = ConfigWindow()
         self.setSuccessinfo("已经准备好，可以开始了！")
 
+    def smart_detect_wechat_path(self):
+        found_paths = find_all_wechat_paths()
+        
+        if len(found_paths) > 0:
+            config = self.create_config_from_paths(found_paths)
+            self.save_config(config)
+            self.setSuccessinfo(f"自动检测到微信数据目录：{found_paths[0]}")
+            self.config_exists = True
+            return True
+        else:
+            return False
+
+    def create_config_from_paths(self, paths):
+        config = {"data_dir": [], "users": []}
+        
+        for path in paths:
+            dir_list, names = get_dir_name(path)
+            for i, user_dir in enumerate(dir_list):
+                config["data_dir"].append(path)
+                config["users"].append({
+                    "wechat_id": names[i],
+                    "clean_days": 365,
+                    "is_clean": True,
+                    "clean_pic_cache": True,
+                    "clean_file": False,
+                    "clean_pic": True,
+                    "clean_video": True,
+                    "is_timer": True,
+                    "timer": "0h"
+                })
+        
+        return config
+
+    def save_config(self, config):
+        if len(config["data_dir"]) > 0:
+            with open(working_dir + "/config.json", "w", encoding="utf-8") as f:
+                json.dump(config, f)
+            return True
+        return False
+
+    def prompt_select_wechat_path(self):
+        self.setWarninginfo("未检测到微信数据目录，请手动选择")
+        
+        folder_path = QFileDialog.getExistingDirectory(
+            self, 
+            "请选择微信数据目录（通常是 'WeChat Files' 文件夹）", 
+            ""
+        )
+        
+        if folder_path and folder_path != '':
+            if check_dir(folder_path) == 0:
+                self.setSuccessinfo(f"已选择微信数据目录：{folder_path}")
+                config = self.create_config_from_paths([folder_path])
+                if self.save_config(config):
+                    self.config_exists = True
+                    return True
+                else:
+                    self.setWarninginfo("保存配置失败")
+                    return False
+            else:
+                self.setWarninginfo("选择的目录不是有效的微信数据目录，请重新选择")
+                return False
+        else:
+            self.setWarninginfo("未选择目录，部分功能可能无法使用")
+            return False
+
     def __init__(self):
         super().__init__()
         loadUi(working_dir + "/images/main.ui", self)
@@ -580,14 +646,22 @@ class MainWindow(Window):
         self.show()
 
         if not os.path.exists(working_dir + "/config.json"):
-            self.setWarninginfo("首次使用，即将自动弹出配置窗口")
+            self.setSuccessinfo("正在智能检测微信数据目录...")
             self.config_exists = False
-
-            timer = QTimer(self)
-            timer.timeout.connect(self.show_config_window)
-            timer.setSingleShot(True)
             
-            timer.start(1000)
+            timer = QTimer(self)
+            
+            def check_and_prompt():
+                if self.smart_detect_wechat_path():
+                    self.setSuccessinfo("检测成功！已经准备好，可以开始了！")
+                else:
+                    self.prompt_select_wechat_path()
+            
+            timer.timeout.connect(check_and_prompt)
+            timer.setSingleShot(True)
+            timer.start(500)
+        else:
+            self.setSuccessinfo("已经准备好，可以开始了！")
 
 
 if __name__ == '__main__':
