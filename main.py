@@ -1,7 +1,7 @@
 import sys
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsDropShadowEffect, QListWidgetItem, QListView, QWidget, \
-    QLabel, QHBoxLayout, QFileDialog
+    QLabel, QHBoxLayout, QFileDialog, QTableWidgetItem, QHeaderView
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint, QTimer
 from PyQt5.QtGui import QMouseEvent, QCursor, QColor
 from PyQt5.uic import loadUi
@@ -15,25 +15,21 @@ from utils.deleteThread import *
 from utils.multiDeleteThread import multiDeleteThread
 from utils.selectVersion import *
 from utils.selectVersion import check_dir, existing_user_config
-# 设置应用程序在高DPI屏幕上启用高DPI缩放。Set the application to enable high DPI scaling on high DPI screens
-# 注意事项：此行代码必须在QApplication实例化之前调用，否则会调用失败。Notes: This line of code must be called before the instantiation of the QApplication object; otherwise, it will fail
+from utils.scanThread import ScanThread
+
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 
-# determine if application is a script file or frozen exe
 if getattr(sys, 'frozen', False):
     working_dir = os.path.dirname(os.path.realpath(sys.executable))
 elif __file__:
     working_dir = os.path.split(os.path.realpath(__file__))[0]
 
-# 主窗口
 class Window(QMainWindow):
     def mousePressEvent(self, event):
-        # 重写一堆方法使其支持拖动
         if event.button() == Qt.LeftButton:
             self.m_drag = True
             self.m_DragPosition = event.globalPos() - self.pos()
             event.accept()
-            # self.setCursor(QCursor(Qt.OpenHandCursor))
 
     def mouseMoveEvent(self, QMouseEvent):
         try:
@@ -45,29 +41,22 @@ class Window(QMainWindow):
 
     def mouseReleaseEvent(self, QMouseEvent):
         self.m_drag = False
-        # self.setCursor(QCursor(Qt.ArrowCursor))
 
     def _frame(self):
-        # 边框
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        # 阴影
         effect = QGraphicsDropShadowEffect(blurRadius=12, xOffset=0, yOffset=0)
         effect.setColor(QColor(25, 25, 25, 170))
         self.mainFrame.setGraphicsEffect(effect)
 
     def doFadeIn(self):
-        # 动画
         self.animation = QPropertyAnimation(self, b'windowOpacity')
-        # 持续时间250ms
         self.animation.setDuration(250)
         try:
-            # 尝试先取消动画完成后关闭窗口的信号
             self.animation.finished.disconnect(self.close)
         except:
             pass
         self.animation.stop()
-        # 透明度范围从0逐渐增加到1
         self.animation.setEasingCurve(QEasingCurve.InOutCubic)
         self.animation.setStartValue(0)
         self.animation.setEndValue(1)
@@ -75,9 +64,7 @@ class Window(QMainWindow):
 
     def doFadeOut(self):
         self.animation.stop()
-        # 动画完成则关闭窗口
         self.animation.finished.connect(self.close)
-        # 透明度范围从1逐渐减少到0s
         self.animation.setEasingCurve(QEasingCurve.InOutCubic)
         self.animation.setStartValue(1)
         self.animation.setEndValue(0)
@@ -94,7 +81,7 @@ class Window(QMainWindow):
                 background: #fff2f0;
             }
             """)
-        self.lab_info.setWordWrap(True)  # 启用自动换行
+        self.lab_info.setWordWrap(True)
         self.lab_info.setText(text)
 
     def setSuccessinfo(self, text):
@@ -108,7 +95,7 @@ class Window(QMainWindow):
                 background: #f6ffed;
             }
             """)
-        self.lab_info.setWordWrap(True)  # 启用自动换行
+        self.lab_info.setWordWrap(True)
         self.lab_info.setText(text)
 
 
@@ -133,7 +120,6 @@ class ConfigWindow(Window):
                 elem for elem in list_
                 if elem != 'All Users' and elem != 'Applet' and elem != 'WMPF'
             ]
-            # 如果已有用户配置，那么写入新的用户配置，否则默认写入新配置
             dir_list = []
             user_config = []
             existing_user_config_dic = existing_user_config()
@@ -282,6 +268,9 @@ class MainWindow(Window):
             self.config_exists = True
 
     def closeEvent(self, event):
+        if hasattr(self, 'scan_thread') and self.scan_thread.isRunning():
+            self.scan_thread.stop()
+            self.scan_thread.wait()
         sys.exit(0)
 
     def eventFilter(self, object, event):
@@ -291,7 +280,7 @@ class MainWindow(Window):
                 return True
             elif object == self.lab_clean:
                 try:
-                    self.setSuccessinfo("正在清理中...")
+                    self.setSuccessinfo("正在一键清理中...")
                     self.justdoit()
                 except:
                     self.setWarninginfo("清理失败，请检查配置文件后重试")
@@ -300,18 +289,158 @@ class MainWindow(Window):
                 cw = ConfigWindow()
                 cw.Signal_OneParameter.connect(self.deal_emit_slot)
                 return True
+            elif object == self.lab_preview:
+                try:
+                    self.start_preview()
+                except Exception as e:
+                    self.setWarninginfo(f"预览失败：{str(e)}")
+                return True
+            elif object == self.lab_execute_delete:
+                try:
+                    self.execute_delete()
+                except Exception as e:
+                    self.setWarninginfo(f"删除失败：{str(e)}")
+                return True
         return False
 
     def _eventfilter(self):
-        # 事件过滤
         self.lab_close.installEventFilter(self)
         self.lab_clean.installEventFilter(self)
         self.lab_config.installEventFilter(self)
+        self.lab_preview.installEventFilter(self)
+        self.lab_execute_delete.installEventFilter(self)
+
+    def init_table(self):
+        self.table_files.setColumnCount(3)
+        self.table_files.setHorizontalHeaderLabels(["选择", "文件路径", "大小"])
+        self.table_files.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        self.table_files.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.table_files.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
+        self.table_files.setColumnWidth(0, 50)
+        self.table_files.setColumnWidth(2, 100)
+        self.table_files.setRowCount(0)
+        self.file_data = []
+
+    def clear_table(self):
+        self.table_files.setRowCount(0)
+        self.file_data = []
+        self.check_select_all.setChecked(False)
+
+    def add_file_to_table(self, file_path, file_size, file_type):
+        row = self.table_files.rowCount()
+        self.table_files.insertRow(row)
+        
+        checkbox_item = QTableWidgetItem()
+        checkbox_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+        checkbox_item.setCheckState(Qt.Checked)
+        self.table_files.setItem(row, 0, checkbox_item)
+        
+        path_item = QTableWidgetItem(file_path)
+        path_item.setToolTip(file_path)
+        self.table_files.setItem(row, 1, path_item)
+        
+        size_item = QTableWidgetItem(file_size)
+        self.table_files.setItem(row, 2, size_item)
+        
+        self.file_data.append({"path": file_path, "type": file_type})
+
+    def start_preview(self):
+        if not os.path.exists(working_dir + "/config.json"):
+            self.setWarninginfo("请先配置微信数据目录")
+            return
+        
+        if hasattr(self, 'scan_thread') and self.scan_thread.isRunning():
+            self.setWarninginfo("正在扫描中，请稍候...")
+            return
+        
+        self.clear_table()
+        self.bar_progress.setValue(0)
+        self.setSuccessinfo("正在扫描文件，请稍候...")
+        
+        fd = open(working_dir + "/config.json", encoding="utf-8")
+        config = json.load(fd)
+        
+        self.scan_thread = ScanThread(config)
+        self.scan_thread.scan_progress_signal.connect(self.on_scan_progress)
+        self.scan_thread.scan_file_found_signal.connect(self.on_scan_file_found)
+        self.scan_thread.scan_finished_signal.connect(self.on_scan_finished)
+        self.scan_thread.scan_error_signal.connect(self.on_scan_error)
+        self.scan_thread.start()
+
+    def on_scan_progress(self, progress):
+        self.bar_progress.setValue(progress)
+
+    def on_scan_file_found(self, file_path, file_size, file_type):
+        self.add_file_to_table(file_path, file_size, file_type)
+
+    def on_scan_finished(self, file_count, dir_count):
+        total = file_count + dir_count
+        if total == 0:
+            self.setSuccessinfo("扫描完成，没有找到需要清理的文件")
+        else:
+            self.setSuccessinfo(f"扫描完成，共找到 {total} 个文件/文件夹")
+        self.bar_progress.setValue(100)
+
+    def on_scan_error(self, error_msg):
+        self.setWarninginfo(f"扫描出错：{error_msg}")
+
+    def toggle_select_all(self, state):
+        if state == Qt.Checked:
+            for row in range(self.table_files.rowCount()):
+                item = self.table_files.item(row, 0)
+                if item:
+                    item.setCheckState(Qt.Checked)
+        else:
+            for row in range(self.table_files.rowCount()):
+                item = self.table_files.item(row, 0)
+                if item:
+                    item.setCheckState(Qt.Unchecked)
+
+    def execute_delete(self):
+        selected_files = []
+        selected_dirs = []
+        
+        for row in range(self.table_files.rowCount()):
+            item = self.table_files.item(row, 0)
+            if item and item.checkState() == Qt.Checked:
+                file_info = self.file_data[row]
+                if file_info["type"] == "file":
+                    selected_files.append(file_info["path"])
+                else:
+                    selected_dirs.append(file_info["path"])
+        
+        if len(selected_files) + len(selected_dirs) == 0:
+            self.setWarninginfo("请先选择要删除的文件")
+            return
+        
+        self.setSuccessinfo("正在删除选中的文件...")
+        
+        self.total_file = len(selected_files)
+        self.total_dir = len(selected_dirs)
+        
+        share_thread_arr = [0]
+        
+        if len(selected_files) + len(selected_dirs) > 0:
+            thread = multiDeleteThread(selected_files, selected_dirs, share_thread_arr)
+            thread.delete_process_signal.connect(self.callback)
+            thread.start()
+            
+            self.remove_deleted_rows(selected_files, selected_dirs)
+
+    def remove_deleted_rows(self, deleted_files, deleted_dirs):
+        rows_to_remove = []
+        for row in range(self.table_files.rowCount()):
+            file_info = self.file_data[row]
+            if file_info["path"] in deleted_files or file_info["path"] in deleted_dirs:
+                rows_to_remove.append(row)
+        
+        for row in sorted(rows_to_remove, reverse=True):
+            self.table_files.removeRow(row)
+            del self.file_data[row]
 
     def get_fileNum(self, path, day, picCacheCheck, fileCheck, picCheck,
                     videoCheck, file_list, dir_list):
         dir_name = PureWindowsPath(path)
-        # Convert path to the right format for the current operating system
         correct_path = Path(dir_name)
         now = datetime.datetime.now()
         if picCacheCheck:
@@ -353,12 +482,10 @@ class MainWindow(Window):
 
     def getPathFileNum(self, now, day, path_one, path_two, file_list,
                        dir_list):
-        # caculate path_one
         self.pathFileDeal(now, day, path_one, file_list, dir_list)
         td = datetime.datetime.now() - datetime.timedelta(days=day)
         td_year = td.year
         td_month = td.month
-        # caculate path_two
         if os.path.exists(path_two):
             osdir = os.listdir(path_two)
             dirlist = []
@@ -432,7 +559,7 @@ class MainWindow(Window):
             self.total_file = total_file
             self.total_dir = total_dir
             for thread in thread_list:
-                thread.run()
+                thread.start()
 
     def show_config_window(self):
         self.config_window = ConfigWindow()
@@ -444,20 +571,22 @@ class MainWindow(Window):
 
         self._frame()
         self._eventfilter()
+        self.init_table()
+        
+        self.check_select_all.stateChanged.connect(self.toggle_select_all)
+        
         self.doFadeIn()
         self.config_exists = True
         self.show()
 
-        # 判断配置文件是否存在
         if not os.path.exists(working_dir + "/config.json"):
             self.setWarninginfo("首次使用，即将自动弹出配置窗口")
             self.config_exists = False
 
             timer = QTimer(self)
             timer.timeout.connect(self.show_config_window)
-            timer.setSingleShot(True)  # 只执行一次
+            timer.setSingleShot(True)
             
-            # 设置定时器的时间间隔，这里设置为 1000ms（1秒）
             timer.start(1000)
 
 
