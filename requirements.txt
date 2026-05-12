@@ -1,4 +1,9 @@
-Send2Trash==1.8.3
-PyQt5==5.15.10
-python_dateutil==2.9.0.post0
-pyinstaller==6.8.0
+# 运行依赖：不锁死补丁版本，兼容原环境和较新的 Python 版本
+Send2Trash>=1.8.3,<2
+PyQt5>=5.15.10,<5.16
+python-dateutil>=2.9.0.post0,<3
+
+# 打包依赖：按 Python 版本选择可用的 PyInstaller，避免 Python 3.14 安装旧版失败
+pyinstaller>=4.10,<5.0; python_version >= "3.6" and python_version < "3.8"
+pyinstaller>=6.8.0,<6.15.0; python_version >= "3.8" and python_version < "3.13"
+pyinstaller>=6.15.0; python_version >= "3.13"
