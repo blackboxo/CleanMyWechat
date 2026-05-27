@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>600</width>
-    <height>550</height>
+    <width>499</width>
+    <height>466</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,7 +34,7 @@
       </property>
       <property name="sizeHint" stdset="0">
        <size>
-        <width>20</width>
+        <width>40</width>
         <height>20</height>
        </size>
       </property>
@@ -47,7 +47,7 @@
       </property>
       <property name="sizeHint" stdset="0">
        <size>
-        <width>20</width>
+        <width>40</width>
         <height>20</height>
        </size>
       </property>
@@ -61,7 +61,7 @@
       <property name="sizeHint" stdset="0">
        <size>
         <width>20</width>
-        <height>20</height>
+        <height>40</height>
        </size>
       </property>
      </spacer>
@@ -74,7 +74,7 @@
       <property name="sizeHint" stdset="0">
        <size>
         <width>20</width>
-        <height>20</height>
+        <height>40</height>
        </size>
       </property>
      </spacer>
@@ -127,16 +127,56 @@
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_table_header">
+        <spacer name="verticalSpacer_4">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
          <item>
-          <widget class="QCheckBox" name="check_select_all">
+          <spacer name="horizontalSpacer_13">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="lab_logo">
+           <property name="minimumSize">
+            <size>
+             <width>200</width>
+             <height>200</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">.QLabel {
+	image: url(:/icon/wechat.png);
+}</string>
+           </property>
            <property name="text">
-            <string>全选</string>
+            <string/>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
            </property>
           </widget>
          </item>
          <item>
-          <spacer name="horizontalSpacer_table">
+          <spacer name="horizontalSpacer_14">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
@@ -151,109 +191,14 @@
         </layout>
        </item>
        <item>
-        <widget class="QTableWidget" name="table_files">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>200</height>
-          </size>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">.QTableWidget {
-	background-color: #fff;
-	border: 1px solid #d9d9d9;
-	border-radius: 3px;
-}
-QTableWidget::item {
-	padding: 5px;
-}
-QTableWidget::item:selected {
-	background-color: #1890ff;
-}
-QHeaderView::section {
-	background-color: #f0f0f0;
-	padding: 5px;
-	border: 1px solid #d9d9d9;
-	font-weight: bold;
-}</string>
-         </property>
-         <property name="editTriggers">
-          <set>QAbstractItemView::NoEditTriggers</set>
-         </property>
-         <property name="selectionMode">
-          <enum>QAbstractItemView::SingleSelection</enum>
-         </property>
-         <property name="selectionBehavior">
-          <enum>QAbstractItemView::SelectRows</enum>
-         </property>
-         <property name="showGrid">
-          <bool>true</bool>
-         </property>
-         <property name="gridStyle">
-          <enum>Qt::SolidLine</enum>
-         </property>
-         <property name="columnCount">
-          <number>3</number>
-         </property>
-         <attribute name="horizontalHeaderDefaultSectionSize">
-          <number>150</number>
-         </attribute>
-         <attribute name="horizontalHeaderHighlightSections">
-          <bool>true</bool>
-         </attribute>
-         <attribute name="horizontalHeaderMinimumSectionSize">
-          <number>50</number>
-         </attribute>
-         <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
-          <bool>false</bool>
-         </attribute>
-         <attribute name="horizontalHeaderStretchLastSection">
-          <bool>true</bool>
-         </attribute>
-         <attribute name="verticalHeaderVisible">
-          <bool>false</bool>
-         </attribute>
-         <attribute name="verticalHeaderDefaultSectionSize">
-          <number>30</number>
-         </attribute>
-         <attribute name="verticalHeaderHighlightSections">
-          <bool>true</bool>
-         </attribute>
-         <attribute name="verticalHeaderMinimumSectionSize">
-          <number>30</number>
-         </attribute>
-         <attribute name="verticalHeaderShowSortIndicator" stdset="0">
-          <bool>false</bool>
-         </attribute>
-         <attribute name="verticalHeaderStretchLastSection">
-          <bool>false</bool>
-         </attribute>
-         <column>
-          <property name="text">
-           <string>选择</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>文件路径</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>大小</string>
-          </property>
-         </column>
-        </widget>
-       </item>
-       <item>
-        <spacer name="verticalSpacer_4">
+        <spacer name="verticalSpacer_5">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
            <width>20</width>
-           <height>10</height>
+           <height>40</height>
           </size>
          </property>
         </spacer>
@@ -270,7 +215,7 @@ QHeaderView::section {
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>20</width>
+             <width>40</width>
              <height>20</height>
             </size>
            </property>
@@ -332,7 +277,7 @@ QProgressBar::chunk {
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>20</width>
+             <width>40</width>
              <height>20</height>
             </size>
            </property>
@@ -341,7 +286,10 @@ QProgressBar::chunk {
         </layout>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_buttons">
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <property name="spacing">
+          <number>0</number>
+         </property>
          <item>
           <spacer name="horizontalSpacer_5">
            <property name="orientation">
@@ -352,79 +300,11 @@ QProgressBar::chunk {
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>20</width>
+             <width>100</width>
              <height>20</height>
             </size>
            </property>
           </spacer>
-         </item>
-         <item>
-          <widget class="QLabel" name="lab_preview">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>35</height>
-            </size>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QLabel {
-    color: rgba(0,0,0,.65);
-    background-color: #fff;
-    border: 1px solid #d9d9d9;
-	border-right: 0px; 
-	height: 24px;
-	font-size: 14px;
-	padding: 0px 10px;
-}
-.QLabel:hover {
-    color: #40a9ff;
-    background-color: #fff;
-    border: 1px solid #40a9ff;
-	height: 24px;
-	font-size: 14px
-}</string>
-           </property>
-           <property name="text">
-            <string>预览</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="lab_execute_delete">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>35</height>
-            </size>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QLabel {
-    color: rgba(0,0,0,.65);
-    background-color: #fff;
-    border: 1px solid #d9d9d9;
-	border-right: 0px; 
-	height: 24px;
-	font-size: 14px;
-	padding: 0px 10px;
-}
-.QLabel:hover {
-    color: #40a9ff;
-    background-color: #fff;
-    border: 1px solid #40a9ff;
-	height: 24px;
-	font-size: 14px
-}</string>
-           </property>
-           <property name="text">
-            <string>执行删除</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
          </item>
          <item>
           <widget class="QLabel" name="lab_clean">
@@ -447,7 +327,7 @@ QProgressBar::chunk {
 }</string>
            </property>
            <property name="text">
-            <string>一键清理</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;开始&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -481,7 +361,7 @@ QProgressBar::chunk {
 }</string>
            </property>
            <property name="text">
-            <string>设置</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;设置&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -515,7 +395,7 @@ QProgressBar::chunk {
 }</string>
            </property>
            <property name="text">
-            <string>退出</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;退出&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -532,7 +412,7 @@ QProgressBar::chunk {
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>20</width>
+             <width>100</width>
              <height>20</height>
             </size>
            </property>
@@ -548,7 +428,7 @@ QProgressBar::chunk {
          <property name="sizeHint" stdset="0">
           <size>
            <width>20</width>
-           <height>10</height>
+           <height>40</height>
           </size>
          </property>
         </spacer>

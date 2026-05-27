@@ -590,13 +590,13 @@ class MainWindow(Window):
                 cw = ConfigWindow()
                 cw.Signal_OneParameter.connect(self.deal_emit_slot)
                 return True
-            elif object == self.lab_preview:
+            elif hasattr(self, "lab_preview") and object == self.lab_preview:
                 try:
                     self.start_preview()
                 except Exception as e:
                     self.setWarninginfo(f"预览失败：{str(e)}")
                 return True
-            elif object == self.lab_execute_delete:
+            elif hasattr(self, "lab_execute_delete") and object == self.lab_execute_delete:
                 try:
                     self.execute_delete()
                 except Exception as e:
@@ -609,8 +609,10 @@ class MainWindow(Window):
         self.lab_close.installEventFilter(self)
         self.lab_clean.installEventFilter(self)
         self.lab_config.installEventFilter(self)
-        self.lab_preview.installEventFilter(self)
-        self.lab_execute_delete.installEventFilter(self)
+        if hasattr(self, "lab_preview"):
+            self.lab_preview.installEventFilter(self)
+        if hasattr(self, "lab_execute_delete"):
+            self.lab_execute_delete.installEventFilter(self)
 
     def simplify_home_ui(self):
         self.lab_info.setText("已经准备好，可以开始了。")
@@ -618,6 +620,8 @@ class MainWindow(Window):
         self.lab_config.setText("设置")
         self.lab_close.setText("退出")
         self.lab_about.setText("Clean My Wechat V2.1 - 清理微信缓存和无用文件")
+        if hasattr(self, "lab_logo"):
+            self.lab_logo.show()
         self.lab_clean.setMinimumHeight(40)
         self.lab_clean.setStyleSheet("""
             .QLabel {
@@ -1277,8 +1281,10 @@ class MainWindow(Window):
 
         self._frame()
         self._eventfilter()
-        self.init_table()
-        self.check_select_all.stateChanged.connect(self.toggle_select_all)
+        if hasattr(self, "table_files"):
+            self.init_table()
+        if hasattr(self, "check_select_all"):
+            self.check_select_all.stateChanged.connect(self.toggle_select_all)
         self.simplify_home_ui()
         self.doFadeIn()
         self.config_exists = True

@@ -207,6 +207,15 @@ def find_all_wechat_paths():
 class selectVersion:
 
     def getAllPath(self):
+        all_user_dirs = []
+        all_user_names = []
+        for path in find_all_wechat_paths():
+            dirs, names = get_dir_name(path)
+            all_user_dirs.extend(dirs)
+            all_user_names.extend(names)
+        if all_user_dirs:
+            return (all_user_dirs, all_user_names)
+
         user = getpass.getuser()
         candidates = [
             os.path.join(r'C:\Users', user, 'Documents', 'WeChat Files'),
