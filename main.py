@@ -14,7 +14,7 @@ import os, datetime, time, re, math, shutil, json, logging
 from utils.deleteThread import *
 from utils.multiDeleteThread import multiDeleteThread
 from utils.selectVersion import *
-from utils.selectVersion import check_dir, existing_user_config, get_dir_name
+from utils.selectVersion import check_dir, existing_user_config, find_all_wechat_paths, get_dir_name
 from utils.scanThread import ScanThread
 # 设置应用程序在高DPI屏幕上启用高DPI缩放。Set the application to enable high DPI scaling on high DPI screens
 # 注意事项：此行代码必须在QApplication实例化之前调用，否则会调用失败。Notes: This line of code must be called before the instantiation of the QApplication object; otherwise, it will fail
@@ -1175,6 +1175,41 @@ class MainWindow(Window):
         self.config_window = ConfigWindow()
         self.setSuccessinfo("已经准备好，可以开始了！")
 
+    def create_config_from_paths(self, paths):
+        user_config = []
+        data_dirs = []
+        existing_user_config_dic = existing_user_config()
+        seen_users = set()
+
+        for path in paths:
+            dir_list, user_list = get_dir_name(path)
+            for index, user_wx_id in enumerate(user_list):
+                if user_wx_id in seen_users:
+                    continue
+                seen_users.add(user_wx_id)
+                user_dir = dir_list[index]
+                data_dirs.append(user_dir)
+                if user_wx_id in existing_user_config_dic:
+                    uc = existing_user_config_dic[user_wx_id]
+                    uc["data_dir"] = user_dir
+                    uc["client_type"] = detect_client_type(user_dir)
+                    user_config.append(uc)
+                else:
+                    user_config.append(make_default_user_config(user_wx_id, user_dir))
+
+        if not user_config:
+            return None
+        return ensure_config_defaults({"data_dir": data_dirs, "users": user_config})
+
+    def smart_detect_wechat_path(self):
+        config = self.create_config_from_paths(find_all_wechat_paths())
+        if not config:
+            return False
+        save_json(CONFIG_PATH, config)
+        self.config_exists = True
+        self.setSuccessinfo("已自动检测到微信数据目录，可以开始清理。")
+        return True
+
     def check_auto_clean_after_start(self):
         try:
             if os.path.exists(CONFIG_PATH):
@@ -1208,11 +1243,15 @@ class MainWindow(Window):
             self.config_exists = False
 
             timer = QTimer(self)
-            timer.timeout.connect(self.show_config_window)
+            def detect_or_configure():
+                if not self.smart_detect_wechat_path():
+                    self.show_config_window()
+
+            timer.timeout.connect(detect_or_configure)
             timer.setSingleShot(True)  # 只执行一次
             
             # 设置定时器的时间间隔，这里设置为 1000ms（1秒）
-            timer.start(1000)
+            timer.start(500)
         else:
             # 如果用户在 config.json 开启自动清理，则启动后按周期检查。
             timer = QTimer(self)

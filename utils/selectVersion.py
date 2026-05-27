@@ -137,6 +137,67 @@ def get_dir_name(filepath):
     return (dirlist, names)
 
 
+def find_all_wechat_paths():
+    """Return valid WeChat/WXWork data roots from common locations and registry values."""
+    user = getpass.getuser()
+    candidates = [
+        os.path.join(r'C:\Users', user, 'Documents', 'WeChat Files'),
+        os.path.join(r'C:\Users', user, 'OneDrive', 'Documents', 'WeChat Files'),
+        os.path.join(r'C:\Users', user, 'Documents', 'WXWork'),
+        os.path.join(r'C:\Users', 'Public', 'Documents', 'WXWork'),
+        os.path.join(r'C:\Users', user, 'AppData', 'Local', 'Packages', 'TencentWeChatLimited.forWindows10_sdtnhv12zgd7a', 'LocalCache', 'Roaming', 'Tencent', 'WeChatAppStore', 'WeChatAppStore Files'),
+        os.path.join(r'C:\Users', user, 'AppData', 'Local', 'Packages', 'TencentWeChatLimited.WeChatUWP_sdtnhv12zgd7a', 'LocalCache', 'Roaming', 'Tencent', 'WeChatAppStore', 'WeChatAppStore Files'),
+    ]
+
+    appdata = os.environ.get('APPDATA')
+    if appdata:
+        candidates.extend([
+            os.path.join(appdata, 'Tencent', 'WeChat', 'WeChat Files'),
+            os.path.join(appdata, 'Tencent', 'WXWork'),
+        ])
+    localappdata = os.environ.get('LOCALAPPDATA')
+    if localappdata:
+        candidates.extend([
+            os.path.join(localappdata, 'Tencent', 'WeChat', 'WeChat Files'),
+            os.path.join(localappdata, 'Tencent', 'WXWork'),
+        ])
+
+    for drive in ['C', 'D', 'E', 'F', 'G']:
+        candidates.extend([
+            rf'{drive}:\WeChat Files',
+            rf'{drive}:\WeChat\WeChat Files',
+            rf'{drive}:\Users\{user}\WeChat Files',
+            rf'{drive}:\Users\{user}\Tencent Files\WeChat Files',
+        ])
+
+    registry_key_paths = [
+        r"software\tencent\wechat",
+        r"Software\Tencent\WeChat",
+        r"SOFTWARE\Tencent\WeChat",
+    ]
+    for key_path in registry_key_paths:
+        for value_name in ["FileSavePath", "InstallPath"]:
+            value = read_registry_value(key_path, value_name)
+            if not value:
+                continue
+            if value == 'MyDocument:':
+                candidates.append(os.path.join(r'C:\Users', user, 'Documents', 'WeChat Files'))
+            elif os.path.isdir(value):
+                candidates.append(value)
+                candidates.append(os.path.join(value, 'WeChat Files'))
+
+    found_paths = []
+    seen = set()
+    for path in candidates:
+        key = os.path.normcase(os.path.abspath(os.path.expanduser(path)))
+        if key in seen:
+            continue
+        if check_dir(path) == 0:
+            found_paths.append(path)
+            seen.add(key)
+    return found_paths
+
+
 class selectVersion:
 
     def getAllPath(self):
