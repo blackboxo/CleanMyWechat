@@ -215,11 +215,36 @@ def ensure_config_defaults(config):
 def load_config_file():
     config = load_json(CONFIG_PATH, {"data_dir": [], "users": []})
     config = ensure_config_defaults(config)
+    config = merge_detected_accounts(config)
     try:
         save_json(CONFIG_PATH, config)
     except Exception:
         logging.exception("写入配置默认值失败")
     return config
+
+
+def merge_detected_accounts(config):
+    try:
+        known_dirs = {
+            os.path.normcase(os.path.abspath(user.get("data_dir", "")))
+            for user in config.get("users", [])
+            if user.get("data_dir")
+        }
+        known_ids = {user.get("wechat_id") for user in config.get("users", [])}
+        for root_path in find_all_wechat_paths():
+            dir_list, user_list = get_dir_name(root_path)
+            for index, wechat_id in enumerate(user_list):
+                data_dir = dir_list[index]
+                dir_key = os.path.normcase(os.path.abspath(data_dir))
+                if dir_key in known_dirs or wechat_id in known_ids:
+                    continue
+                config["users"].append(make_default_user_config(wechat_id, data_dir))
+                config["data_dir"].append(data_dir)
+                known_dirs.add(dir_key)
+                known_ids.add(wechat_id)
+    except Exception:
+        logging.exception("自动合并微信账号目录失败")
+    return ensure_config_defaults(config)
 
 
 def make_default_user_config(wechat_id, data_dir):
@@ -615,40 +640,99 @@ class MainWindow(Window):
             self.lab_execute_delete.installEventFilter(self)
 
     def simplify_home_ui(self):
-        self.lab_info.setText("已经准备好，可以开始了。")
+        self.setMinimumSize(520, 560)
+        self.centralwidget.setStyleSheet("""
+            QWidget#centralwidget {
+                background-color: #eef7f1;
+            }
+        """)
+        self.mainFrame.setStyleSheet("""
+            QFrame#mainFrame {
+                background-color: #f8fbf7;
+                border: 1px solid #dcebe1;
+                border-radius: 18px;
+            }
+        """)
+        self.lab_info.setMinimumHeight(72)
+        self.lab_info.setText("扫描微信缓存、日志和旧文件，清理前会再次确认。")
+        self.lab_info.setStyleSheet("""
+            .QLabel {
+                color: #395246;
+                background-color: #e8f6ed;
+                border: 1px solid #c8e8d2;
+                border-radius: 14px;
+                padding: 10px 18px;
+                font-size: 14px;
+                line-height: 150%;
+            }
+        """)
         self.lab_clean.setText("扫描并清理")
         self.lab_config.setText("设置")
         self.lab_close.setText("退出")
-        self.lab_about.setText("Clean My Wechat V2.1 - 清理微信缓存和无用文件")
+        self.lab_about.setText("Clean My Wechat · 简单、安全地释放微信占用空间")
+        self.lab_about.setStyleSheet("""
+            .QLabel {
+                color: #6a7d72;
+                font-size: 13px;
+                padding: 8px 0 2px 0;
+            }
+        """)
         if hasattr(self, "lab_logo"):
             self.lab_logo.show()
-        self.lab_clean.setMinimumHeight(40)
+            self.lab_logo.setMinimumSize(196, 196)
+            self.lab_logo.setStyleSheet("""
+                .QLabel {
+                    image: url(:/icon/wechat.png);
+                    background-color: #eaf8ee;
+                    border: 1px solid #c9ecd3;
+                    border-radius: 98px;
+                    padding: 18px;
+                }
+            """)
+        self.bar_progress.setMinimumHeight(26)
+        self.bar_progress.setStyleSheet("""
+            .QProgressBar {
+                background-color: #e5efe8;
+                border: 1px solid #d1e2d6;
+                border-radius: 13px;
+                color: #395246;
+                font-size: 12px;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #2fbf68;
+                border-radius: 12px;
+            }
+        """)
+        self.lab_clean.setMinimumHeight(48)
         self.lab_clean.setStyleSheet("""
             .QLabel {
-                color: #fff;
-                background-color: #1890ff;
-                border: 1px solid #1890ff;
-                border-radius: 3px;
-                font-size: 15px;
-                padding: 0 20px;
+                color: #f8fbf7;
+                background-color: #16a85a;
+                border: 1px solid #149550;
+                border-radius: 24px;
+                font-size: 16px;
+                font-weight: 600;
+                padding: 0 34px;
             }
             .QLabel:hover {
-                background-color: #40a9ff;
-                border: 1px solid #40a9ff;
+                background-color: #20b966;
+                border: 1px solid #18a75a;
             }
         """)
         secondary_style = """
             .QLabel {
-                color: rgba(0,0,0,.65);
-                background-color: #fff;
-                border: 1px solid #d9d9d9;
-                border-radius: 3px;
+                color: #486256;
+                background-color: #f1f7f3;
+                border: 1px solid #d3e4d8;
+                border-radius: 18px;
                 font-size: 14px;
-                padding: 0 12px;
+                padding: 0 16px;
             }
             .QLabel:hover {
-                color: #40a9ff;
-                border: 1px solid #40a9ff;
+                color: #159452;
+                background-color: #e8f6ed;
+                border: 1px solid #b9dfc5;
             }
         """
         self.lab_config.setStyleSheet(secondary_style)
@@ -1013,6 +1097,22 @@ class MainWindow(Window):
             if videoCheck:
                 scan_dirs.append((correct_path / 'Video', 'video'))
                 scan_dirs.append((correct_path / 'Videos', 'video'))
+
+        if 'xwechat_files' in str(correct_path).lower():
+            if picCacheCheck:
+                scan_dirs.append((correct_path / 'cache', 'cache'))
+                scan_dirs.append((correct_path / 'temp', 'cache'))
+                scan_dirs.append((correct_path / 'apm_record', 'cache'))
+                scan_dirs.append((correct_path / 'business' / 'InputTemp', 'cache'))
+                scan_dirs.append((correct_path / 'business' / 'emoticon' / 'Temp', 'cache'))
+                scan_dirs.append((correct_path / 'business' / 'emoticon' / 'Thumb', 'cache'))
+                scan_dirs.append((correct_path / 'business' / 'xweb', 'cache'))
+            if fileCheck:
+                scan_dirs.append((correct_path / 'msg' / 'file', 'file'))
+                scan_dirs.append((correct_path / 'msg' / 'attach', 'file'))
+                scan_dirs.append((correct_path / 'business' / 'favorite', 'file'))
+            if videoCheck:
+                scan_dirs.append((correct_path / 'msg' / 'video', 'video'))
 
         # 新版微信 4.x 常见附件目录，里面可能混合图片、视频和普通文件，实际分类按扩展名判断。
         if user_config.get("clean_msg_attach", True):
