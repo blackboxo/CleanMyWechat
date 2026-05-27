@@ -1,7 +1,9 @@
-from PyQt5.QtCore import QThread, pyqtSignal, QMutex
-from send2trash import send2trash
-import os
 import logging
+import os
+
+from PyQt5.QtCore import QMutex, QThread, pyqtSignal
+from send2trash import send2trash
+
 
 PROTECTED_EXTS = {
     '.db', '.sqlite', '.sqlite3', '.db-shm', '.db-wal', '.ldb', '.sst',
@@ -14,14 +16,12 @@ def is_protected_file(file_path):
     return os.path.splitext(str(file_path))[1].lower() in PROTECTED_EXTS
 
 
-##################################################################
-# 删除线程，支持多进程
-##################################################################
 qmut = QMutex()
 
 
 class multiDeleteThread(QThread):
-    delete_process_signal = pyqtSignal(int)  # 创建信号
+    delete_process_signal = pyqtSignal(int)
+    delete_complete_signal = pyqtSignal()
 
     def __init__(self, fileList, dirList, share_thread_arr):
         super(multiDeleteThread, self).__init__()
@@ -31,27 +31,31 @@ class multiDeleteThread(QThread):
 
     def _send_to_trash(self, file_path):
         if is_protected_file(file_path):
-            logging.info("跳过受保护文件：%s", file_path)
+            logging.info("Skip protected file: %s", file_path)
             return
         try:
             send2trash(file_path)
-        except Exception as e:
-            # 单个文件失败不影响后续清理，失败原因写入日志。
-            logging.exception("移动到回收站失败：%s", file_path)
+        except Exception:
+            logging.exception("Failed to move to recycle bin: %s", file_path)
 
     def _emit_progress(self):
         qmut.lock()
-        self.share_thread_arr[0] += 1
-        self.delete_process_signal.emit(self.share_thread_arr[0])
-        qmut.unlock()
+        try:
+            self.share_thread_arr[0] += 1
+            self.delete_process_signal.emit(self.share_thread_arr[0])
+        finally:
+            qmut.unlock()
 
     def run(self):
-        for file_path in self.fileList:
-            self._send_to_trash(file_path)
-            self._emit_progress()
+        try:
+            for file_path in self.fileList:
+                self._send_to_trash(file_path)
+                self._emit_progress()
 
-        for file_path in self.dirList:
-            self._send_to_trash(file_path)
-            self._emit_progress()
+            for file_path in self.dirList:
+                self._send_to_trash(file_path)
+                self._emit_progress()
 
-        logging.info('一个清理线程执行结束')
+            logging.info("Delete thread finished")
+        finally:
+            self.delete_complete_signal.emit()

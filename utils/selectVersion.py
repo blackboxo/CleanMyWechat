@@ -13,7 +13,8 @@ CONFIG_PATH = os.path.join(working_dir, "config.json")
 
 IGNORED_ROOT_NAMES = {
     'All Users', 'Applet', 'WMPF', 'Global', 'config', 'Config', 'Common',
-    'Update', 'Temp', 'temp', 'log', 'logs'
+    'Update', 'Temp', 'temp', 'log', 'logs', 'all users', 'all_users',
+    'backup', 'Backup', 'wax_fca'
 }
 
 
@@ -143,6 +144,8 @@ def find_all_wechat_paths():
     candidates = [
         os.path.join(r'C:\Users', user, 'Documents', 'WeChat Files'),
         os.path.join(r'C:\Users', user, 'OneDrive', 'Documents', 'WeChat Files'),
+        os.path.join(r'C:\Users', user, 'Documents', 'xwechat_files'),
+        os.path.join(r'C:\Users', user, 'Documents', 'XWechat Files'),
         os.path.join(r'C:\Users', user, 'Documents', 'WXWork'),
         os.path.join(r'C:\Users', 'Public', 'Documents', 'WXWork'),
         os.path.join(r'C:\Users', user, 'AppData', 'Local', 'Packages', 'TencentWeChatLimited.forWindows10_sdtnhv12zgd7a', 'LocalCache', 'Roaming', 'Tencent', 'WeChatAppStore', 'WeChatAppStore Files'),
@@ -165,8 +168,11 @@ def find_all_wechat_paths():
     for drive in ['C', 'D', 'E', 'F', 'G']:
         candidates.extend([
             rf'{drive}:\WeChat Files',
+            rf'{drive}:\xwechat_files',
+            rf'{drive}:\XWechat Files',
             rf'{drive}:\WeChat\WeChat Files',
             rf'{drive}:\Users\{user}\WeChat Files',
+            rf'{drive}:\Users\{user}\xwechat_files',
             rf'{drive}:\Users\{user}\Tencent Files\WeChat Files',
         ])
 
@@ -204,6 +210,8 @@ class selectVersion:
         user = getpass.getuser()
         candidates = [
             os.path.join(r'C:\Users', user, 'Documents', 'WeChat Files'),
+            os.path.join(r'C:\Users', user, 'Documents', 'xwechat_files'),
+            os.path.join(r'C:\Users', user, 'Documents', 'XWechat Files'),
             os.path.join(r'C:\Users', user, 'Documents', 'WXWork'),
             os.path.join(r'C:\Users', 'Public', 'Documents', 'WXWork'),
             os.path.join(r'C:\Users', user, 'AppData', 'Local', 'Packages', 'TencentWeChatLimited.forWindows10_sdtnhv12zgd7a', 'LocalCache', 'Roaming', 'Tencent', 'WeChatAppStore', 'WeChatAppStore Files'),
