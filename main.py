@@ -1,20 +1,20 @@
 import sys
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsDropShadowEffect, QListWidgetItem, QListView, QWidget, \
-    QLabel, QHBoxLayout, QFileDialog
+    QLabel, QHBoxLayout, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint, QTimer
 from PyQt5.QtGui import QMouseEvent, QCursor, QColor
 from PyQt5.uic import loadUi
 
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 from dateutil import relativedelta
 import utils.resources
-import os, datetime, time, re, math, shutil, json
+import os, datetime, time, re, math, shutil, json, logging
 
 from utils.deleteThread import *
 from utils.multiDeleteThread import multiDeleteThread
 from utils.selectVersion import *
-from utils.selectVersion import check_dir, existing_user_config
+from utils.selectVersion import check_dir, existing_user_config, get_dir_name
 # 设置应用程序在高DPI屏幕上启用高DPI缩放。Set the application to enable high DPI scaling on high DPI screens
 # 注意事项：此行代码必须在QApplication实例化之前调用，否则会调用失败。Notes: This line of code must be called before the instantiation of the QApplication object; otherwise, it will fail
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
@@ -24,6 +24,301 @@ if getattr(sys, 'frozen', False):
     working_dir = os.path.dirname(os.path.realpath(sys.executable))
 elif __file__:
     working_dir = os.path.split(os.path.realpath(__file__))[0]
+
+# 统一配置、日志、白名单、自动清理状态文件的位置，避免不同模块各读各的。
+CONFIG_PATH = os.path.join(working_dir, "config.json")
+LOG_PATH = os.path.join(working_dir, "cleanmywechat.log")
+STATE_PATH = os.path.join(working_dir, "clean_state.json")
+WHITELIST_PATH = os.path.join(working_dir, "whitelist.txt")
+PREVIEW_PATH = os.path.join(working_dir, "last_scan_preview.txt")
+
+logging.basicConfig(
+    handlers=[logging.FileHandler(LOG_PATH, encoding="utf-8")],
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
+
+# 按扩展名分组，后续扫描预览和白名单判断都用这一套规则。
+IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tif', '.tiff', '.heic', '.dat'}
+VIDEO_EXTS = {'.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.m4v', '.3gp'}
+DOCUMENT_EXTS = {'.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.pdf', '.txt', '.csv'}
+ARCHIVE_EXTS = {'.zip', '.rar', '.7z', '.tar', '.gz', '.bz2'}
+CACHE_EXTS = {'.cache', '.tmp', '.temp', '.log', '.old'}
+# 这些属于数据库或程序运行组件，任何清理模式下都直接跳过。
+SAFE_SKIP_EXTS = {
+    '.db', '.sqlite', '.sqlite3', '.db-shm', '.db-wal', '.ldb', '.sst',
+    '.dll', '.exe', '.msi', '.sys', '.ocx', '.pyd', '.so', '.dylib',
+    '.bat', '.cmd', '.ps1', '.vbs', '.js', '.jar', '.pak'
+}
+
+# 这些目录通常放运行组件或程序资源，不当成缓存目录递归。
+PROTECTED_DIR_NAMES = {
+    'bin', 'runtime', 'runtimes', 'plugin', 'plugins', 'xplugin', 'module', 'modules',
+    'framework', 'frameworks', 'locales', 'resources', 'swiftshader', 'installer',
+    'update', 'updates', 'crashpad', 'web_shell', 'multitab'
+}
+
+# 只把名字明确指向缓存、日志、临时文件的目录加入新版微信系统区清理范围。
+SAFE_CACHE_DIR_NAMES = {
+    'cache', 'code cache', 'gpucache', 'dawncache', 'shadercache', 'logs', 'log',
+    'temp', 'tmp', 'blob_storage'
+}
+
+CATEGORY_NAME = {
+    'cache': '缓存/日志',
+    'image': '图片',
+    'video': '视频',
+    'file': '普通文件',
+    'document': '文档',
+    'archive': '压缩包',
+    'other': '其他'
+}
+
+
+DEFAULT_GLOBAL_CONFIG = {
+    # 定时清理默认关闭，用户确认后可以在 config.json 里打开，避免第一次运行就自动清理。
+    "auto_clean_enable": False,
+    "auto_clean_interval_days": 30,
+    "auto_clean_confirm": True,
+    "run_at_startup": False,
+    "startup_clean_cache_only": True,
+    "scan_system_cache": True,
+    "scan_wechat4_cache": True,
+    "scan_mini_program_cache": True,
+    "scan_wxwork_cache": True
+}
+
+DEFAULT_USER_EXTRA = {
+    # 新增新版微信和企业微信常见目录，默认开启扫描，但仍受“保留天数”和“清理前确认”控制。
+    "client_type": "wechat",
+    "clean_msg_attach": True,
+    "clean_system_cache": True,
+    "clean_log_cache": True,
+    "clean_web_cache": True,
+    "clean_miniprogram_cache": True,
+    "clean_wxwork_cache": True,
+    # 白名单默认开启，重要办公文件默认不清理，降低误删风险。
+    "use_whitelist": True,
+    "whitelist_paths": [],
+    "whitelist_exts": [
+        ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".pdf",
+        ".dll", ".exe", ".msi", ".sys", ".ocx", ".pyd", ".pak"
+    ],
+    # 文件类型细分，用户可以在 config.json 中精确控制。
+    "clean_ext_groups": {
+        "image": True,
+        "video": True,
+        "document": False,
+        "archive": True,
+        "cache": True,
+        "other": True
+    }
+}
+
+
+def load_json(path, default_value):
+    try:
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logging.exception("读取 JSON 失败：%s", path)
+    return default_value
+
+
+def save_json(path, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def format_size(size):
+    try:
+        size = float(size)
+    except Exception:
+        return "0 B"
+    units = ["B", "KB", "MB", "GB", "TB"]
+    index = 0
+    while size >= 1024 and index < len(units) - 1:
+        size = size / 1024
+        index += 1
+    if index == 0:
+        return f"{int(size)} {units[index]}"
+    return f"{size:.2f} {units[index]}"
+
+
+def normalize_ext(ext):
+    if not ext:
+        return ""
+    ext = ext.lower().strip()
+    if ext and not ext.startswith('.'):
+        ext = '.' + ext
+    return ext
+
+
+def ensure_whitelist_file():
+    # 提供一个可直接编辑的白名单文件，不影响原有界面。
+    if not os.path.exists(WHITELIST_PATH):
+        with open(WHITELIST_PATH, "w", encoding="utf-8") as f:
+            f.write("# 一行一个白名单路径或扩展名，示例：\n")
+            f.write("# D:/重要文件\n")
+            f.write("# .pdf\n")
+            f.write("# .docx\n")
+
+
+def read_whitelist_file():
+    ensure_whitelist_file()
+    paths = []
+    exts = []
+    try:
+        with open(WHITELIST_PATH, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if line.startswith('.') or (not os.path.sep in line and len(line) <= 8):
+                    exts.append(normalize_ext(line))
+                else:
+                    paths.append(os.path.abspath(os.path.expandvars(line)))
+    except Exception:
+        logging.exception("读取白名单失败")
+    return paths, exts
+
+
+def ensure_config_defaults(config):
+    # 兼容旧 config.json，老配置不用手动删，启动后自动补齐新字段。
+    if not isinstance(config, dict):
+        config = {}
+    config.setdefault("data_dir", [])
+    config.setdefault("users", [])
+    global_config = config.setdefault("global", {})
+    for key, value in DEFAULT_GLOBAL_CONFIG.items():
+        global_config.setdefault(key, value)
+
+    for index, user in enumerate(config.get("users", [])):
+        for key, value in DEFAULT_USER_EXTRA.items():
+            if isinstance(value, dict):
+                user.setdefault(key, {})
+                for k2, v2 in value.items():
+                    user[key].setdefault(k2, v2)
+            elif isinstance(value, list):
+                user.setdefault(key, list(value))
+            else:
+                user.setdefault(key, value)
+        # 账号和目录直接绑定，保留旧 data_dir 列表只是为了兼容旧版本。
+        if "data_dir" not in user and index < len(config.get("data_dir", [])):
+            user["data_dir"] = config["data_dir"][index]
+    return config
+
+
+def load_config_file():
+    config = load_json(CONFIG_PATH, {"data_dir": [], "users": []})
+    config = ensure_config_defaults(config)
+    try:
+        save_json(CONFIG_PATH, config)
+    except Exception:
+        logging.exception("写入配置默认值失败")
+    return config
+
+
+def make_default_user_config(wechat_id, data_dir):
+    user = {
+        "wechat_id": wechat_id,
+        "data_dir": data_dir,
+        "client_type": detect_client_type(data_dir),
+        "clean_days": "365",
+        "is_clean": True,
+        "clean_pic_cache": True,
+        "clean_file": False,
+        "clean_pic": True,
+        "clean_video": True,
+        "is_timer": True,
+        "timer": "0h"
+    }
+    ensure_config_defaults({"users": [user], "data_dir": [data_dir], "global": {}})
+    return user
+
+
+def get_file_type(file_path, default_category="other"):
+    ext = os.path.splitext(str(file_path))[1].lower()
+    if ext in IMAGE_EXTS:
+        return "image"
+    if ext in VIDEO_EXTS:
+        return "video"
+    if ext in DOCUMENT_EXTS:
+        return "document"
+    if ext in ARCHIVE_EXTS:
+        return "archive"
+    if ext in CACHE_EXTS:
+        return "cache"
+    return default_category
+
+
+def safe_file_size(path):
+    try:
+        return os.path.getsize(path)
+    except Exception:
+        logging.exception("读取文件大小失败：%s", path)
+        return 0
+
+
+def is_sub_path(path, root):
+    try:
+        path = os.path.abspath(path).lower()
+        root = os.path.abspath(root).lower()
+        return path == root or path.startswith(root + os.sep)
+    except Exception:
+        return False
+
+
+def detect_client_type(path):
+    path_lower = str(path or '').lower()
+    if 'wxwork' in path_lower or 'wework' in path_lower:
+        return 'wxwork'
+    return 'wechat'
+
+
+def is_safe_cache_dir_name(name):
+    base_name = str(name).lower().strip()
+    if base_name in SAFE_CACHE_DIR_NAMES:
+        return True
+    return 'cache' in base_name or base_name.endswith('log') or base_name.endswith('logs')
+
+
+def is_protected_file_path(path):
+    path_str = str(path)
+    ext = normalize_ext(os.path.splitext(path_str)[1])
+    if ext in SAFE_SKIP_EXTS:
+        return True
+    parts = [p.lower() for p in Path(path_str).parts]
+    return any(p in PROTECTED_DIR_NAMES for p in parts)
+
+
+def apply_startup_setting(config):
+    # 支持开机启动。默认不打开；用户在 config.json 中把 run_at_startup 改成 true 后生效。
+    if os.name != 'nt':
+        return
+    try:
+        import winreg
+        key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+        app_name = "CleanMyWechat"
+        global_config = config.get("global", {})
+        if getattr(sys, 'frozen', False):
+            command = '"{}"'.format(sys.executable)
+        else:
+            command = '"{}" "{}"'.format(sys.executable, os.path.abspath(__file__))
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
+        if global_config.get("run_at_startup", False):
+            winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, command)
+        else:
+            try:
+                winreg.DeleteValue(key, app_name)
+            except FileNotFoundError:
+                pass
+        winreg.CloseKey(key)
+    except Exception:
+        logging.exception("设置开机启动失败")
+
 
 # 主窗口
 class Window(QMainWindow):
@@ -40,8 +335,8 @@ class Window(QMainWindow):
             if Qt.LeftButton and self.m_drag:
                 self.move(QMouseEvent.globalPos() - self.m_DragPosition)
                 QMouseEvent.accept()
-        except:
-            pass
+        except Exception:
+            logging.exception("窗口拖动失败")
 
     def mouseReleaseEvent(self, QMouseEvent):
         self.m_drag = False
@@ -64,7 +359,7 @@ class Window(QMainWindow):
         try:
             # 尝试先取消动画完成后关闭窗口的信号
             self.animation.finished.disconnect(self.close)
-        except:
+        except Exception:
             pass
         self.animation.stop()
         # 透明度范围从0逐渐增加到1
@@ -128,40 +423,26 @@ class ConfigWindow(Window):
             return False
         if check_dir(openfile_path) == 0:
             self.setSuccessinfo('读取路径成功！')
-            list_ = os.listdir(openfile_path)
-            user_list = [
-                elem for elem in list_
-                if elem != 'All Users' and elem != 'Applet' and elem != 'WMPF'
-            ]
+            dir_list, user_list = get_dir_name(openfile_path)
             # 如果已有用户配置，那么写入新的用户配置，否则默认写入新配置
-            dir_list = []
             user_config = []
             existing_user_config_dic = existing_user_config()
-            for user_wx_id in user_list:
-                dir_list.append(os.path.join(openfile_path, user_wx_id))
+            for index, user_wx_id in enumerate(user_list):
+                user_dir = dir_list[index]
                 if user_wx_id in existing_user_config_dic:
-                    user_config.append(existing_user_config_dic[user_wx_id])
+                    uc = existing_user_config_dic[user_wx_id]
+                    uc["data_dir"] = user_dir
+                    uc["client_type"] = detect_client_type(user_dir)
+                    user_config.append(uc)
                 else:
-                    user_config.append({
-                        "wechat_id": user_wx_id,
-                        "clean_days": "365",
-                        "is_clean": True,
-                        "clean_pic_cache": True,
-                        "clean_file": False,
-                        "clean_pic": True,
-                        "clean_video": True,
-                        "is_timer": True,
-                        "timer": "0h"
-                    })
+                    user_config.append(make_default_user_config(user_wx_id, user_dir))
 
-            config = {"data_dir": dir_list, "users": user_config}
+            config = ensure_config_defaults({"data_dir": dir_list, "users": user_config})
 
-            with open(
-                    working_dir + "/config.json", "w", encoding="utf-8") as f:
-                json.dump(config, f)
+            save_json(CONFIG_PATH, config)
             self.load_config()
         else:
-            self.setWarninginfo('请选择正确的文件夹！\n一般是WeChat Files文件夹。')
+            self.setWarninginfo('请选择正确的文件夹！\n微信一般选 WeChat Files，企业微信一般选 WXWork。')
 
     def save_config(self):
         self.update_config()
@@ -178,12 +459,15 @@ class ConfigWindow(Window):
             return True
 
     def load_config(self):
-        fd = open(working_dir + "/config.json", encoding="utf-8")
-        self.config = json.load(fd)
+        self.config = load_config_file()
 
         self.combo_user.clear()
         for value in self.config["users"]:
             self.combo_user.addItem(value["wechat_id"])
+
+        if not self.config["users"]:
+            self.setWarninginfo("没有检测到微信账号，请手动选择 WeChat Files 文件夹。")
+            return
 
         self.line_gobackdays.setText(
             str(self.config["users"][0]["clean_days"]))
@@ -193,11 +477,11 @@ class ConfigWindow(Window):
         self.check_video.setChecked(self.config["users"][0]["clean_video"])
         self.check_picscache.setChecked(
             self.config["users"][0]["clean_pic_cache"])
+        self.check_is_clean.setText("启用该账号的缓存清理")  # 文案更清楚，避免误解成删除账号。
         self.setSuccessinfo("请确认每个账号的删除内容及时间，以防误删！")
 
     def refresh_ui(self):
-        self.config = open(working_dir + "/config.json", encoding="utf-8")
-        self.config = json.load(self.config)
+        self.config = load_config_file()
 
         for value in self.config["users"]:
             if value["wechat_id"] == self.combo_user.currentText():
@@ -209,27 +493,16 @@ class ConfigWindow(Window):
                 self.check_picscache.setChecked(value["clean_pic_cache"])
 
     def create_config(self):
-        if not os.path.exists(working_dir + "/config.json"):
+        if not os.path.exists(CONFIG_PATH):
             if not self.check_wechat_exists():
                 self.setWarninginfo("默认位置没有微信，请自定义位置")
                 return
 
-            self.config = {"data_dir": self.version_scan, "users": []}
-            for value in self.users_scan:
-                self.config["users"].append({
-                    "wechat_id": value,
-                    "clean_days": 365,
-                    "is_clean": True,
-                    "clean_pic_cache": True,
-                    "clean_file": False,
-                    "clean_pic": True,
-                    "clean_video": True,
-                    "is_timer": True,
-                    "timer": "0h"
-                })
-            with open(
-                    working_dir + "/config.json", "w", encoding="utf-8") as f:
-                json.dump(self.config, f)
+            self.config = ensure_config_defaults({"data_dir": self.version_scan, "users": []})
+            for index, value in enumerate(self.users_scan):
+                data_dir = self.version_scan[index] if index < len(self.version_scan) else ""
+                self.config["users"].append(make_default_user_config(value, data_dir))
+            save_json(CONFIG_PATH, self.config)
             self.load_config()
             self.setSuccessinfo("请确认每个账号的删除内容及时间，以防误删！")
         else:
@@ -240,6 +513,7 @@ class ConfigWindow(Window):
         if not len(self.config):
             return
         else:
+            self.config = ensure_config_defaults(self.config)
             for value in self.config["users"]:
                 if value["wechat_id"] == self.combo_user.currentText():
                     try:
@@ -256,8 +530,7 @@ class ConfigWindow(Window):
                     value["clean_video"] = self.check_video.isChecked()
                     value["clean_pic_cache"] = self.check_picscache.isChecked()
 
-            with open(working_dir + "/config.json", "w", encoding="utf-8") as f:
-                json.dump(self.config, f)
+            save_json(CONFIG_PATH, self.config)
             self.setSuccessinfo("更新配置文件成功")
             self.Signal_OneParameter.emit(1)
 
@@ -291,10 +564,11 @@ class MainWindow(Window):
                 return True
             elif object == self.lab_clean:
                 try:
-                    self.setSuccessinfo("正在清理中...")
+                    self.setSuccessinfo("正在扫描可清理文件...")
                     self.justdoit()
-                except:
-                    self.setWarninginfo("清理失败，请检查配置文件后重试")
+                except Exception as e:
+                    logging.exception("清理失败")
+                    self.setWarninginfo("清理失败：" + str(e) + "\n详情请查看 cleanmywechat.log")
                 return True
             elif object == self.lab_config:
                 cw = ConfigWindow()
@@ -308,33 +582,258 @@ class MainWindow(Window):
         self.lab_clean.installEventFilter(self)
         self.lab_config.installEventFilter(self)
 
-    def get_fileNum(self, path, day, picCacheCheck, fileCheck, picCheck,
-                    videoCheck, file_list, dir_list):
-        dir_name = PureWindowsPath(path)
-        # Convert path to the right format for the current operating system
-        correct_path = Path(dir_name)
-        now = datetime.datetime.now()
-        if picCacheCheck:
-            path_one = correct_path / 'Attachment'
-            path_two = correct_path / 'FileStorage/Cache'
-            self.getPathFileNum(now, day, path_one, path_two, file_list,
-                                dir_list)
-        if fileCheck:
-            path_one = correct_path / 'Files'
-            path_two = correct_path / 'FileStorage/File'
-            self.getPathFileNum(now, day, path_one, path_two, file_list,
-                                dir_list)
-        if picCheck:
-            path_one = correct_path / 'Image/Image'
-            path_two = correct_path / 'FileStorage/Image'
-            self.getPathFileNum(now, day, path_one, path_two, file_list,
-                                dir_list)
-        if videoCheck:
-            path_one = correct_path / 'Video'
-            path_two = correct_path / 'FileStorage/Video'
-            self.getPathFileNum(now, day, path_one, path_two, file_list,
-                                dir_list)
+    def make_empty_stats(self):
+        return {
+            "total_files": 0,
+            "total_dirs": 0,
+            "total_size": 0,
+            "categories": {
+                key: {"count": 0, "size": 0}
+                for key in CATEGORY_NAME.keys()
+            }
+        }
 
+    def merge_stats(self, total_stats, add_stats):
+        total_stats["total_files"] += add_stats.get("total_files", 0)
+        total_stats["total_dirs"] += add_stats.get("total_dirs", 0)
+        total_stats["total_size"] += add_stats.get("total_size", 0)
+        for key, value in add_stats.get("categories", {}).items():
+            total_stats["categories"].setdefault(key, {"count": 0, "size": 0})
+            total_stats["categories"][key]["count"] += value.get("count", 0)
+            total_stats["categories"][key]["size"] += value.get("size", 0)
+
+    def build_whitelist(self, user_config):
+        file_paths, file_exts = read_whitelist_file()
+        cfg_paths = [os.path.abspath(os.path.expandvars(p)) for p in user_config.get("whitelist_paths", [])]
+        cfg_exts = [normalize_ext(e) for e in user_config.get("whitelist_exts", [])]
+        return file_paths + cfg_paths, set(file_exts + cfg_exts)
+
+    def is_in_whitelist(self, file_path, whitelist_paths, whitelist_exts):
+        ext = normalize_ext(os.path.splitext(str(file_path))[1])
+        if is_protected_file_path(file_path):
+            return True
+        if ext in whitelist_exts:
+            return True
+        for p in whitelist_paths:
+            if p and is_sub_path(file_path, p):
+                return True
+        return False
+
+    def category_enabled(self, user_config, file_path, category, default_category):
+        ext_group = get_file_type(file_path, default_category)
+        ext_groups = user_config.get("clean_ext_groups", {})
+        if not ext_groups.get(ext_group, True):
+            return False
+
+        # 保留原来的四个勾选项逻辑，同时做更细的扩展名过滤。
+        if category == "cache":
+            return bool(user_config.get("clean_pic_cache", True))
+        if category == "image":
+            return bool(user_config.get("clean_pic", True))
+        if category == "video":
+            return bool(user_config.get("clean_video", True))
+        if category in ("file", "document", "archive", "other"):
+            return bool(user_config.get("clean_file", False))
+        return True
+
+    def add_file_if_match(self, file_path, now, day, category, file_list, file_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts):
+        try:
+            if not os.path.isfile(file_path):
+                return
+            # 程序组件和数据库文件始终跳过，避免把 dll/exe/db 一类文件送进回收站。
+            if is_protected_file_path(file_path):
+                return
+            if user_config.get("use_whitelist", True) and self.is_in_whitelist(file_path, whitelist_paths, whitelist_exts):
+                return
+            timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+            diff = (now - timestamp).days
+            if diff < day:
+                return
+            real_category = get_file_type(file_path, category)
+            # 日志、网页缓存这类路径即使扩展名普通，也归入缓存，方便用户理解。
+            if category == "cache":
+                real_category = "cache"
+            if not self.category_enabled(user_config, file_path, real_category, category):
+                return
+            if file_path in file_set:
+                return
+            file_set.add(file_path)
+            file_list.append(file_path)
+            fsize = safe_file_size(file_path)
+            stats["total_files"] += 1
+            stats["total_size"] += fsize
+            stats["categories"].setdefault(real_category, {"count": 0, "size": 0})
+            stats["categories"][real_category]["count"] += 1
+            stats["categories"][real_category]["size"] += fsize
+            if len(detail_lines) < 1200:
+                detail_lines.append(f"[{CATEGORY_NAME.get(real_category, real_category)}] {format_size(fsize)}  {file_path}")
+        except Exception:
+            logging.exception("扫描文件失败：%s", file_path)
+
+    def scan_files_recursive(self, root_path, now, day, category, file_list, file_set, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts):
+        # 用 os.walk 递归扫描，解决新版微信多层目录扫不到的问题。
+        if not root_path or not os.path.exists(root_path):
+            return
+        try:
+            for root, dirs, files in os.walk(root_path):
+                # 程序组件目录不递归，防止把运行库和插件误当成缓存。
+                dirs[:] = [d for d in dirs if d.lower() not in PROTECTED_DIR_NAMES]
+                # 跳过白名单目录。
+                skip_root = False
+                if user_config.get("use_whitelist", True):
+                    for white_dir in whitelist_paths:
+                        if white_dir and is_sub_path(root, white_dir):
+                            skip_root = True
+                            break
+                if skip_root:
+                    dirs[:] = []
+                    continue
+                for filename in files:
+                    file_path = os.path.join(root, filename)
+                    self.add_file_if_match(file_path, now, day, category, file_list, file_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts)
+                # 只记录真正的空旧目录，不整月粗暴删除，避免把白名单文件夹一起送进回收站。
+                for dirname in list(dirs):
+                    dir_path = os.path.join(root, dirname)
+                    try:
+                        if not os.listdir(dir_path):
+                            timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(dir_path))
+                            diff = (now - timestamp).days
+                            if diff >= day and dir_path not in dir_set:
+                                dir_set.add(dir_path)
+                                dir_list.append(dir_path)
+                                stats["total_dirs"] += 1
+                                if len(detail_lines) < 1200:
+                                    detail_lines.append(f"[空文件夹] {dir_path}")
+                    except Exception:
+                        logging.exception("扫描文件夹失败：%s", dir_path)
+        except Exception:
+            logging.exception("扫描目录失败：%s", root_path)
+
+    def find_cache_dirs_under(self, base_path, max_depth=5):
+        result = []
+        if not base_path or not os.path.exists(base_path):
+            return result
+        base_depth = len(Path(base_path).parts)
+        try:
+            for root, dirs, files in os.walk(base_path):
+                current_depth = len(Path(root).parts) - base_depth
+                base_name = os.path.basename(root)
+                lower_name = base_name.lower()
+                if is_safe_cache_dir_name(lower_name):
+                    result.append((root, "cache"))
+                    # 当前目录已经是缓存目录，后续由 scan_files_recursive 负责递归。
+                    dirs[:] = []
+                    continue
+                if current_depth >= max_depth:
+                    dirs[:] = []
+                    continue
+                # 只继续往可能包含缓存的目录里找，不进入 runtime/web_shell/bin 等程序目录。
+                dirs[:] = [
+                    d for d in dirs
+                    if d.lower() not in PROTECTED_DIR_NAMES
+                    and (is_safe_cache_dir_name(d) or 'cache' in d.lower() or 'log' in d.lower() or 'temp' in d.lower())
+                ]
+        except Exception:
+            logging.exception("查找缓存目录失败：%s", base_path)
+        return result
+
+    def get_system_cache_dirs(self, client_type="wechat"):
+        # 系统区只扫描明确的日志和缓存目录，不再扫描 web_shell、multitab 等运行组件目录。
+        result = []
+        appdata = os.environ.get("APPDATA")
+        localappdata = os.environ.get("LOCALAPPDATA")
+        candidates = []
+        if client_type == "wxwork":
+            if appdata:
+                candidates.append(os.path.join(appdata, "Tencent", "WXWork"))
+            if localappdata:
+                candidates.append(os.path.join(localappdata, "Tencent", "WXWork"))
+        else:
+            if appdata:
+                candidates.append(os.path.join(appdata, "Tencent", "WeChat"))
+            if localappdata:
+                candidates.append(os.path.join(localappdata, "Tencent", "WeChat"))
+
+        for base in candidates:
+            for name in ["log", "logs", "temp", "tmp"]:
+                p = os.path.join(base, name)
+                if os.path.exists(p):
+                    result.append((p, "cache"))
+            profiles = os.path.join(base, "radium", "web", "profiles")
+            result.extend(self.find_cache_dirs_under(profiles, max_depth=6))
+        return result
+
+    def get_miniprogram_dirs(self, account_path):
+        result = []
+        if not account_path:
+            return result
+        parent = os.path.dirname(account_path)
+        for base in [account_path, parent]:
+            for name in ["Applet", "WMPF", "WeChatAppEx", "XPlugin"]:
+                p = os.path.join(base, name)
+                result.extend(self.find_cache_dirs_under(p, max_depth=5))
+        return result
+
+    def get_fileNum(self, path, day, picCacheCheck, fileCheck, picCheck,
+                    videoCheck, file_list, dir_list, user_config=None, stats=None, detail_lines=None, file_set=None, dir_set=None, include_system_cache=False):
+        # 保留原函数名，内部增强为新版扫描逻辑，减少对原项目结构的影响。
+        user_config = ensure_config_defaults({"users": [user_config or {}], "data_dir": [path], "global": {}})["users"][0]
+        stats = stats if stats is not None else self.make_empty_stats()
+        detail_lines = detail_lines if detail_lines is not None else []
+        file_set = file_set if file_set is not None else set()
+        dir_set = dir_set if dir_set is not None else set()
+        correct_path = Path(os.path.normpath(path))
+        now = datetime.datetime.now()
+        client_type = user_config.get("client_type") or detect_client_type(str(correct_path))
+        whitelist_paths, whitelist_exts = self.build_whitelist(user_config)
+
+        scan_dirs = []
+        if picCacheCheck:
+            scan_dirs.append((correct_path / 'Attachment', 'cache'))
+            scan_dirs.append((correct_path / 'FileStorage/Cache', 'cache'))
+        if fileCheck:
+            scan_dirs.append((correct_path / 'Files', 'file'))
+            scan_dirs.append((correct_path / 'FileStorage/File', 'file'))
+        if picCheck:
+            scan_dirs.append((correct_path / 'Image/Image', 'image'))
+            scan_dirs.append((correct_path / 'FileStorage/Image', 'image'))
+        if videoCheck:
+            scan_dirs.append((correct_path / 'Video', 'video'))
+            scan_dirs.append((correct_path / 'FileStorage/Video', 'video'))
+
+        if client_type == "wxwork" and user_config.get("clean_wxwork_cache", True):
+            # 企业微信常见目录，部分版本会把文件、图片、语音按月份放在 Cache 下。
+            if picCacheCheck:
+                scan_dirs.append((correct_path / 'Cache', 'cache'))
+                scan_dirs.extend(self.find_cache_dirs_under(str(correct_path / 'Cache'), max_depth=4))
+            if fileCheck:
+                scan_dirs.append((correct_path / 'File', 'file'))
+                scan_dirs.append((correct_path / 'Files', 'file'))
+                scan_dirs.append((correct_path / 'Document', 'document'))
+            if picCheck:
+                scan_dirs.append((correct_path / 'Image', 'image'))
+                scan_dirs.append((correct_path / 'Images', 'image'))
+            if videoCheck:
+                scan_dirs.append((correct_path / 'Video', 'video'))
+                scan_dirs.append((correct_path / 'Videos', 'video'))
+
+        # 新版微信 4.x 常见附件目录，里面可能混合图片、视频和普通文件，实际分类按扩展名判断。
+        if user_config.get("clean_msg_attach", True):
+            scan_dirs.append((correct_path / 'FileStorage/MsgAttach', 'file'))
+            scan_dirs.append((correct_path / 'MsgAttach', 'file'))
+            scan_dirs.append((correct_path / 'msg/attach', 'file'))
+            scan_dirs.append((correct_path / 'xwechat_files', 'file'))
+
+        if user_config.get("clean_miniprogram_cache", True):
+            scan_dirs.extend(self.get_miniprogram_dirs(str(correct_path)))
+
+        if include_system_cache and user_config.get("clean_system_cache", True):
+            scan_dirs.extend(self.get_system_cache_dirs(client_type))
+
+        for scan_path, category in scan_dirs:
+            self.scan_files_recursive(str(scan_path), now, day, category, file_list, file_set, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts)
+
+    # 原来的按月目录判断函数保留，避免旧代码引用时报错。
     def pathFileDeal(self, now, day, path, file_list, dir_list):
         if os.path.exists(path):
             filelist = [
@@ -353,12 +852,11 @@ class MainWindow(Window):
 
     def getPathFileNum(self, now, day, path_one, path_two, file_list,
                        dir_list):
-        # caculate path_one
+        # 保留旧函数，主流程已经换成递归扫描。
         self.pathFileDeal(now, day, path_one, file_list, dir_list)
         td = datetime.datetime.now() - datetime.timedelta(days=day)
         td_year = td.year
         td_month = td.month
-        # caculate path_two
         if os.path.exists(path_two):
             osdir = os.listdir(path_two)
             dirlist = []
@@ -370,7 +868,7 @@ class MainWindow(Window):
                 file_path = os.path.join(path_two, dirlist[i])
                 if os.path.isfile(file_path):
                     continue
-                if re.match('\d{4}(\-)\d{2}', dirlist[i]) != None:
+                if re.match(r'\d{4}-\d{2}', dirlist[i]) != None:
                     cyear = int(dirlist[i].split('-', 1)[0])
                     cmonth = int(dirlist[i].split('-', 1)[1])
                     if self.__before_deadline(cyear, cmonth, td_year,
@@ -389,54 +887,166 @@ class MainWindow(Window):
         elif cyear == td_year:
             return cmonth < td_month
 
+    def build_preview_text(self, total_stats, detail_lines):
+        lines = []
+        lines.append("清理前请确认以下内容：")
+        lines.append(f"待清理文件：{total_stats['total_files']} 个")
+        lines.append(f"待清理空文件夹：{total_stats['total_dirs']} 个")
+        lines.append(f"预计可释放空间：{format_size(total_stats['total_size'])}")
+        lines.append("")
+        lines.append("分类统计：")
+        for key, name in CATEGORY_NAME.items():
+            item = total_stats["categories"].get(key, {"count": 0, "size": 0})
+            if item["count"] > 0:
+                lines.append(f"- {name}：{item['count']} 个，{format_size(item['size'])}")
+        if len(lines) == 6:
+            lines.append("- 暂无分类数据")
+        lines.append("")
+        lines.append("风险提示：")
+        lines.append("1. 本工具不会主动删除微信文字聊天数据库。")
+        lines.append("2. 文件会先移入回收站，确认无误后再自行清空。")
+        lines.append("3. 如果微信正在运行，个别文件可能因为占用而清理失败。")
+        lines.append("4. 白名单路径和扩展名会自动跳过，可在 whitelist.txt 或 config.json 中调整。")
+        return "\n".join(lines)
+
+    def show_preview_dialog(self, total_stats, detail_lines):
+        # 清理前预览，不再一点开始就直接进回收站。
+        preview_text = self.build_preview_text(total_stats, detail_lines)
+        try:
+            with open(PREVIEW_PATH, "w", encoding="utf-8") as f:
+                f.write(preview_text + "\n\n")
+                f.write("详细文件列表：\n")
+                f.write("\n".join(detail_lines))
+        except Exception:
+            logging.exception("写入扫描预览失败")
+
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("清理前确认")
+        msg.setText(preview_text)
+        msg.setInformativeText("确认后才会把这些文件移入回收站。")
+        if detail_lines:
+            msg.setDetailedText("\n".join(detail_lines[:800]))
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.button(QMessageBox.Yes).setText("确认清理")
+        msg.button(QMessageBox.No).setText("取消")
+        return msg.exec_() == QMessageBox.Yes
+
     def callback(self, v):
-        value = v / int((self.total_file + self.total_dir)) * 100
+        total = int((self.total_file + self.total_dir))
+        if total <= 0:
+            self.bar_progress.setValue(0)
+            return
+        value = v / total * 100
         self.bar_progress.setValue(int(value))
-        if value == 100:
+        if value >= 100:
             out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(
-                self.total_dir) + "个。\n请前往回收站检查并清空。"
+                self.total_dir) + "个，预计释放空间" + format_size(getattr(self, 'total_size', 0)) + "。\n请前往回收站检查并清空。"
             self.setSuccessinfo(out)
+            self.thread_list = []
+            if getattr(self, "auto_clean_running", False):
+                state = load_json(STATE_PATH, {})
+                state["last_auto_clean"] = datetime.datetime.now().strftime("%Y-%m-%d")
+                save_json(STATE_PATH, state)
+                self.auto_clean_running = False
             return
 
-    def justdoit(self): 
-        fd = open(working_dir + "/config.json", encoding="utf-8")
-        self.config = json.load(fd)
-        i = 0
+    def should_run_auto_clean(self, config):
+        global_config = config.get("global", {})
+        if not global_config.get("auto_clean_enable", False):
+            return False
+        state = load_json(STATE_PATH, {})
+        last_auto_clean = state.get("last_auto_clean")
+        try:
+            interval = int(global_config.get("auto_clean_interval_days", 30))
+        except Exception:
+            interval = 30
+        if not last_auto_clean:
+            return True
+        try:
+            last_date = datetime.datetime.strptime(last_auto_clean, "%Y-%m-%d")
+            return (datetime.datetime.now() - last_date).days >= interval
+        except Exception:
+            return True
+
+    def justdoit(self, auto_mode=False):
+        self.config = load_config_file()
+        apply_startup_setting(self.config)
         need_clean = False
-        thread_list = []
+        self.thread_list = []
         total_file = 0
         total_dir = 0
+        total_stats = self.make_empty_stats()
+        detail_lines = []
         share_thread_arr = [0]
-        for value in self.config["users"]:
+        system_cache_added = False
+
+        for i, value in enumerate(self.config.get("users", [])):
             file_list = []
             dir_list = []
-            if value["is_clean"]:
-                self.get_fileNum(self.config["data_dir"][i],
-                                 int(value["clean_days"]),
-                                 value["clean_pic_cache"], value["clean_file"],
-                                 value["clean_pic"], value["clean_video"],
-                                 file_list, dir_list)
+            stats = self.make_empty_stats()
+            file_set = set()
+            dir_set = set()
+            if value.get("is_clean", False):
+                account_dir = value.get("data_dir")
+                if not account_dir and i < len(self.config.get("data_dir", [])):
+                    account_dir = self.config["data_dir"][i]
+                if auto_mode and self.config.get("global", {}).get("startup_clean_cache_only", True):
+                    # 自动/开机清理时可只扫缓存，避免没人看屏幕时处理普通文件。
+                    value = dict(value)
+                    value["clean_file"] = False
+                    value["clean_pic"] = False
+                    value["clean_video"] = False
+                    value["clean_pic_cache"] = True
+                self.get_fileNum(account_dir,
+                                 int(value.get("clean_days", 365)),
+                                 value.get("clean_pic_cache", True), value.get("clean_file", False),
+                                 value.get("clean_pic", True), value.get("clean_video", True),
+                                 file_list, dir_list, user_config=value, stats=stats,
+                                 detail_lines=detail_lines, file_set=file_set, dir_set=dir_set,
+                                 include_system_cache=(not system_cache_added))
+                system_cache_added = True
 
             if len(file_list) + len(dir_list) != 0:
                 need_clean = True
                 total_file += len(file_list)
                 total_dir += len(dir_list)
-                thread_list.append(
-                    multiDeleteThread(file_list, dir_list, share_thread_arr))
-                thread_list[-1].delete_process_signal.connect(self.callback)
-            i = i + 1
+                self.merge_stats(total_stats, stats)
+                thread = multiDeleteThread(file_list, dir_list, share_thread_arr)
+                thread.delete_process_signal.connect(self.callback)
+                self.thread_list.append(thread)
 
         if not need_clean:
             self.setWarninginfo("没有需要清理的文件")
         else:
             self.total_file = total_file
             self.total_dir = total_dir
-            for thread in thread_list:
-                thread.run()
+            self.total_size = total_stats.get("total_size", 0)
+            if not auto_mode or self.config.get("global", {}).get("auto_clean_confirm", True):
+                if not self.show_preview_dialog(total_stats, detail_lines):
+                    self.setWarninginfo("已取消清理，未移动任何文件。")
+                    self.thread_list = []
+                    return
+            self.setSuccessinfo("正在清理中，请稍候...")
+            # 真正启动 QThread，并保存线程对象，避免界面卡死和线程被回收。
+            for thread in self.thread_list:
+                thread.start()
 
     def show_config_window(self):
         self.config_window = ConfigWindow()
         self.setSuccessinfo("已经准备好，可以开始了！")
+
+    def check_auto_clean_after_start(self):
+        try:
+            if os.path.exists(CONFIG_PATH):
+                config = load_config_file()
+                apply_startup_setting(config)
+                if self.should_run_auto_clean(config):
+                    self.auto_clean_running = True
+                    self.setSuccessinfo("已到自动清理周期，正在扫描...")
+                    self.justdoit(auto_mode=True)
+        except Exception:
+            logging.exception("自动清理检查失败")
 
     def __init__(self):
         super().__init__()
@@ -446,10 +1056,13 @@ class MainWindow(Window):
         self._eventfilter()
         self.doFadeIn()
         self.config_exists = True
+        self.thread_list = []
+        self.auto_clean_running = False
+        ensure_whitelist_file()
         self.show()
 
         # 判断配置文件是否存在
-        if not os.path.exists(working_dir + "/config.json"):
+        if not os.path.exists(CONFIG_PATH):
             self.setWarninginfo("首次使用，即将自动弹出配置窗口")
             self.config_exists = False
 
@@ -459,6 +1072,12 @@ class MainWindow(Window):
             
             # 设置定时器的时间间隔，这里设置为 1000ms（1秒）
             timer.start(1000)
+        else:
+            # 如果用户在 config.json 开启自动清理，则启动后按周期检查。
+            timer = QTimer(self)
+            timer.timeout.connect(self.check_auto_clean_after_start)
+            timer.setSingleShot(True)
+            timer.start(800)
 
 
 if __name__ == '__main__':
