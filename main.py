@@ -15,7 +15,9 @@ from utils.deleteThread import *
 from utils.multiDeleteThread import multiDeleteThread
 from utils.selectVersion import *
 from utils.selectVersion import check_dir, existing_user_config
-
+# 设置应用程序在高DPI屏幕上启用高DPI缩放。Set the application to enable high DPI scaling on high DPI screens
+# 注意事项：此行代码必须在QApplication实例化之前调用，否则会调用失败。Notes: This line of code must be called before the instantiation of the QApplication object; otherwise, it will fail
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 
 # determine if application is a script file or frozen exe
 if getattr(sys, 'frozen', False):
@@ -92,6 +94,7 @@ class Window(QMainWindow):
                 background: #fff2f0;
             }
             """)
+        self.lab_info.setWordWrap(True)  # 启用自动换行
         self.lab_info.setText(text)
 
     def setSuccessinfo(self, text):
@@ -105,6 +108,7 @@ class Window(QMainWindow):
                 background: #f6ffed;
             }
             """)
+        self.lab_info.setWordWrap(True)  # 启用自动换行
         self.lab_info.setText(text)
 
 
@@ -157,7 +161,7 @@ class ConfigWindow(Window):
                 json.dump(config, f)
             self.load_config()
         else:
-            self.setWarninginfo('请选择正确的文件夹！一般是WeChat Files文件夹。')
+            self.setWarninginfo('请选择正确的文件夹！\n一般是WeChat Files文件夹。')
 
     def save_config(self):
         self.update_config()
@@ -387,10 +391,10 @@ class MainWindow(Window):
 
     def callback(self, v):
         value = v / int((self.total_file + self.total_dir)) * 100
-        self.bar_progress.setValue(value)
+        self.bar_progress.setValue(int(value))
         if value == 100:
             out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(
-                self.total_dir) + "个。请前往回收站检查并清空。"
+                self.total_dir) + "个。\n请前往回收站检查并清空。"
             self.setSuccessinfo(out)
             return
 

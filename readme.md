@@ -4,6 +4,8 @@
 
 [![](https://img.shields.io/badge/platform-win64-lightgrey)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/v/release/blackboxo/AutoDeleteFileOnPCWechat)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases) [![](https://img.shields.io/github/downloads/blackboxo/AutoDeleteFileOnPCWechat/total)](https://github.com/blackboxo/AutoDeleteFileOnPCWechat/releases)
 
+<a href="https://hellogithub.com/repository/372422c3479e496aabd39ee17d56b5ba" target="_blank"><img src="https://api.hellogithub.com/v1/widgets/recommend.svg?rid=372422c3479e496aabd39ee17d56b5ba&claim_uid=Nyem9zKIlpfGH2U" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+
 自动删除 PC 端微信自动下载的大量文件、视频、图片等数据内容，解放一年几十 G 的空间占用。
 
 该工具不会删除文字的聊天记录，请放心使用。请给个 **Star** 吧，非常感谢！
@@ -17,8 +19,6 @@ https://wwvs.lanzouj.com/is77n0yap4dc)
 https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.zip)
 
 **碰到无法清理的，请记得勾选第一个选项，勾选后才会清理该账号下的内容。**
-
-[Buy me a coffee :coffee:](https://www.chongya.com/@blackboxo)
 
 ## 特性
 1. 自动识别微信账号，支持用户选择自定义路径；
@@ -49,9 +49,12 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.
 
 ## 打包 EXE 方式
 
-执行 pyinstaller -F -i images/icon.ico -w main.py， 会生成 dist 文件夹
-
-将 images 文件夹拷贝到 dist 文件夹下，运行 dist/main.exe 即可执行。
+```Shell
+pip install -r requirements.txt
+pyinstaller -F -i images/icon.ico -w main.py
+cp -r images dist/
+./dist/main.exe
+```
 
 ## 致谢
 
@@ -64,14 +67,6 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.
 [@LenmoisLemon](https://github.com/LenmoisLemon)：版本 2.0 的主要开发者，全新 UI 设计，增加多用户配置
 
 [@Louhwz](https://github.com/Louhwz)：版本 2.0 的主要开发者，增加多用户支持、多线程删除、自定义路径等
-
-## 开发者
-
-微博：@BlackBoXo
-
-邮箱：bwu18@fudan.edu.cn
-
-Blog：https://www.blackboxo.top/
 
 ## Star History
 
