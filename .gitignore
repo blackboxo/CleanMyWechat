@@ -5,3 +5,7 @@ dist/
 *.zip
 *.pyc
 **__pycache__**
+cleanmywechat.log
+whitelist.txt
+last_scan_preview.txt
+clean_state.json

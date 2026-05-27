@@ -418,6 +418,15 @@ class ConfigWindow(Window):
         self.btn_close.clicked.connect(self.save_config)
         self.btn_file.clicked.connect(self.open_file)
 
+    def simplify_config_ui(self):
+        self.btn_file.setText("重新选择目录")
+        self.btn_close.setText("保存")
+        self.check_is_clean.setText("启用这个账号的清理")
+        self.check_picdown.setText("图片")
+        self.check_files.setText("收到的文档（默认不清理）")
+        self.check_video.setText("视频")
+        self.check_picscache.setText("图片缓存、小程序和公众号缓存")
+
     def open_file(self):
         openfile_path = QFileDialog.getExistingDirectory(self, '选择微信数据目录', '')
         if not openfile_path or openfile_path == '':
@@ -478,8 +487,10 @@ class ConfigWindow(Window):
         self.check_video.setChecked(self.config["users"][0]["clean_video"])
         self.check_picscache.setChecked(
             self.config["users"][0]["clean_pic_cache"])
-        self.check_is_clean.setText("启用该账号的缓存清理")  # 文案更清楚，避免误解成删除账号。
-        self.setSuccessinfo("请确认每个账号的删除内容及时间，以防误删！")
+        self.check_is_clean.setText("启用这个账号的清理")
+        self.setSuccessinfo("推荐使用默认选项。收到的文档默认不清理，文件会先进入回收站。")
+
+        self.simplify_config_ui()
 
     def refresh_ui(self):
         self.config = load_config_file()
@@ -541,6 +552,7 @@ class ConfigWindow(Window):
 
         self._frame()
         self._connect()
+        self.simplify_config_ui()
 
         self.doFadeIn()
         self.create_config()
@@ -599,6 +611,48 @@ class MainWindow(Window):
         self.lab_config.installEventFilter(self)
         self.lab_preview.installEventFilter(self)
         self.lab_execute_delete.installEventFilter(self)
+
+    def simplify_home_ui(self):
+        self.lab_info.setText("已经准备好，可以开始了。")
+        self.lab_clean.setText("扫描并清理")
+        self.lab_config.setText("设置")
+        self.lab_close.setText("退出")
+        self.lab_about.setText("Clean My Wechat V2.1 - 清理微信缓存和无用文件")
+        self.lab_clean.setMinimumHeight(40)
+        self.lab_clean.setStyleSheet("""
+            .QLabel {
+                color: #fff;
+                background-color: #1890ff;
+                border: 1px solid #1890ff;
+                border-radius: 3px;
+                font-size: 15px;
+                padding: 0 20px;
+            }
+            .QLabel:hover {
+                background-color: #40a9ff;
+                border: 1px solid #40a9ff;
+            }
+        """)
+        secondary_style = """
+            .QLabel {
+                color: rgba(0,0,0,.65);
+                background-color: #fff;
+                border: 1px solid #d9d9d9;
+                border-radius: 3px;
+                font-size: 14px;
+                padding: 0 12px;
+            }
+            .QLabel:hover {
+                color: #40a9ff;
+                border: 1px solid #40a9ff;
+            }
+        """
+        self.lab_config.setStyleSheet(secondary_style)
+        self.lab_close.setStyleSheet(secondary_style)
+        for widget_name in ("check_select_all", "table_files", "lab_preview", "lab_execute_delete"):
+            widget = getattr(self, widget_name, None)
+            if widget is not None:
+                widget.hide()
 
     def init_table(self):
         self.table_files.setColumnCount(3)
@@ -1028,24 +1082,19 @@ class MainWindow(Window):
 
     def build_preview_text(self, total_stats, detail_lines):
         lines = []
-        lines.append("清理前请确认以下内容：")
-        lines.append(f"待清理文件：{total_stats['total_files']} 个")
-        lines.append(f"待清理空文件夹：{total_stats['total_dirs']} 个")
+        lines.append("清理前请确认")
         lines.append(f"预计可释放空间：{format_size(total_stats['total_size'])}")
+        lines.append(f"将清理：{total_stats['total_files']} 个文件、{total_stats['total_dirs']} 个空文件夹")
         lines.append("")
-        lines.append("分类统计：")
+        lines.append("清理内容：")
         for key, name in CATEGORY_NAME.items():
             item = total_stats["categories"].get(key, {"count": 0, "size": 0})
             if item["count"] > 0:
                 lines.append(f"- {name}：{item['count']} 个，{format_size(item['size'])}")
-        if len(lines) == 6:
+        if len(lines) == 5:
             lines.append("- 暂无分类数据")
         lines.append("")
-        lines.append("风险提示：")
-        lines.append("1. 本工具不会主动删除微信文字聊天数据库。")
-        lines.append("2. 文件会先移入回收站，确认无误后再自行清空。")
-        lines.append("3. 如果微信正在运行，个别文件可能因为占用而清理失败。")
-        lines.append("4. 白名单路径和扩展名会自动跳过，可在 whitelist.txt 或 config.json 中调整。")
+        lines.append("文件会先进入回收站，不会直接永久删除。")
         return "\n".join(lines)
 
     def show_preview_dialog(self, total_stats, detail_lines):
@@ -1061,9 +1110,9 @@ class MainWindow(Window):
 
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Warning)
-        msg.setWindowTitle("清理前确认")
+        msg.setWindowTitle("确认清理")
         msg.setText(preview_text)
-        msg.setInformativeText("确认后才会把这些文件移入回收站。")
+        msg.setInformativeText("确认后才会开始移动文件。")
         if detail_lines:
             msg.setDetailedText("\n".join(detail_lines[:800]))
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
@@ -1230,6 +1279,7 @@ class MainWindow(Window):
         self._eventfilter()
         self.init_table()
         self.check_select_all.stateChanged.connect(self.toggle_select_all)
+        self.simplify_home_ui()
         self.doFadeIn()
         self.config_exists = True
         self.thread_list = []
