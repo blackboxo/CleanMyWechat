@@ -69,13 +69,34 @@ QComboBox::down-arrow {
 QCheckBox {
     color: #31483d;
     font-size: 14px;
-    spacing: 8px;
+    spacing: 10px;
 }
-QCheckBox::indicator::unchecked {
-    image: url(:/icon/复选.svg);
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
 }
-QCheckBox::indicator::checked {
-    image: url(:/icon/复选1.svg);
+QCheckBox::indicator:unchecked {
+    background-color: #f8fbf7;
+    border: 1px solid #b8d4c1;
+}
+QCheckBox::indicator:checked {
+    background-color: #16a85a;
+    border: 1px solid #149550;
+}
+QCheckBox#check_is_clean {
+    color: #274135;
+    background-color: #e8f6ed;
+    border: 1px solid #c8e8d2;
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-weight: 600;
+}
+QCheckBox#check_is_clean::indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
 }
 QPushButton {
     min-height: 38px;
@@ -155,7 +176,7 @@ QPushButton#btn_close:hover {
           </size>
          </property>
          <property name="text">
-          <string>推荐使用默认选项。收到的文档默认不清理，文件会先进入回收站。</string>
+          <string>推荐使用默认选项。文件会先进入回收站，清理前会再次确认。</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
@@ -254,7 +275,7 @@ QPushButton#btn_close:hover {
          <item row="1" column="1">
           <widget class="QCheckBox" name="check_files">
            <property name="text">
-            <string>收到的文档（默认不清理）</string>
+            <string>收到的文档</string>
            </property>
           </widget>
          </item>

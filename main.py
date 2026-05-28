@@ -14,7 +14,7 @@ import os, datetime, time, re, math, shutil, json, logging
 from utils.deleteThread import *
 from utils.multiDeleteThread import multiDeleteThread
 from utils.selectVersion import *
-from utils.selectVersion import check_dir, existing_user_config, find_all_wechat_paths, get_dir_name
+from utils.selectVersion import check_dir, existing_user_config, find_all_wechat_paths, get_dir_name, is_wechat_like_account_dir
 from utils.scanThread import ScanThread
 # 设置应用程序在高DPI屏幕上启用高DPI缩放。Set the application to enable high DPI scaling on high DPI screens
 # 注意事项：此行代码必须在QApplication实例化之前调用，否则会调用失败。Notes: This line of code must be called before the instantiation of the QApplication object; otherwise, it will fail
@@ -209,6 +209,15 @@ def ensure_config_defaults(config):
         # 账号和目录直接绑定，保留旧 data_dir 列表只是为了兼容旧版本。
         if "data_dir" not in user and index < len(config.get("data_dir", [])):
             user["data_dir"] = config["data_dir"][index]
+    valid_users = []
+    valid_data_dirs = []
+    for user in config.get("users", []):
+        data_dir = user.get("data_dir")
+        if data_dir and is_wechat_like_account_dir(data_dir):
+            valid_users.append(user)
+            valid_data_dirs.append(data_dir)
+    config["users"] = valid_users
+    config["data_dir"] = valid_data_dirs
     return config
 
 
@@ -451,7 +460,7 @@ class ConfigWindow(Window):
         self.btn_close.setText("保存设置")
         self.check_is_clean.setText("启用这个账号的清理")
         self.check_picdown.setText("图片")
-        self.check_files.setText("收到的文档（默认不清理）")
+        self.check_files.setText("收到的文档")
         self.check_video.setText("视频")
         self.check_picscache.setText("图片缓存、小程序和公众号缓存")
 
@@ -516,7 +525,7 @@ class ConfigWindow(Window):
         self.check_picscache.setChecked(
             self.config["users"][0]["clean_pic_cache"])
         self.check_is_clean.setText("启用这个账号的清理")
-        self.setSuccessinfo("推荐使用默认选项。收到的文档默认不清理，文件会先进入回收站。")
+        self.setSuccessinfo("推荐使用默认选项。文件会先进入回收站，清理前会再次确认。")
 
         self.simplify_config_ui()
 

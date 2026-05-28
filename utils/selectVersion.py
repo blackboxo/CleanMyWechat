@@ -124,17 +124,6 @@ def get_dir_name(filepath):
         dirlist.append(account_dir)
         names.append(name)
 
-    if not dirlist:
-        try:
-            list_ = os.listdir(filepath)
-            list_ = [element for element in list_ if element not in IGNORED_ROOT_NAMES]
-            for item in list_:
-                file_path = os.path.join(filepath, item)
-                if os.path.isdir(file_path):
-                    dirlist.append(file_path)
-                    names.append(item)
-        except Exception:
-            pass
     return (dirlist, names)
 
 
