@@ -81,7 +81,7 @@ QCheckBox::indicator:unchecked {
     border: 1px solid #b8d4c1;
 }
 QCheckBox::indicator:checked {
-    background-color: #16a85a;
+    background-color: #f8fbf7;
     border: 1px solid #149550;
     image: url(:/icon/复选1.svg);
 }
