@@ -6,13 +6,13 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>680</width>
+    <width>760</width>
     <height>560</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>680</width>
+    <width>760</width>
     <height>560</height>
    </size>
   </property>
@@ -83,6 +83,7 @@ QCheckBox::indicator:unchecked {
 QCheckBox::indicator:checked {
     background-color: #16a85a;
     border: 1px solid #149550;
+    image: url(:/icon/复选1.svg);
 }
 QCheckBox#check_is_clean {
     color: #274135;
@@ -104,12 +105,12 @@ QPushButton {
     border-radius: 19px;
     font-size: 14px;
 }
-QPushButton#btn_file {
+QPushButton#btn_file, QPushButton#btn_open_account {
     color: #486256;
     background-color: #f1f7f3;
     border: 1px solid #d3e4d8;
 }
-QPushButton#btn_file:hover {
+QPushButton#btn_file:hover, QPushButton#btn_open_account:hover {
     color: #159452;
     background-color: #e8f6ed;
     border-color: #b9dfc5;
@@ -195,7 +196,7 @@ QPushButton#btn_close:hover {
           <widget class="QLabel" name="accountLabel">
            <property name="minimumSize">
             <size>
-             <width>92</width>
+             <width>82</width>
              <height>0</height>
             </size>
            </property>
@@ -208,9 +209,22 @@ QPushButton#btn_close:hover {
           <widget class="QComboBox" name="combo_user">
            <property name="minimumSize">
             <size>
-             <width>260</width>
+             <width>230</width>
              <height>36</height>
             </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_open_account">
+           <property name="minimumSize">
+            <size>
+             <width>112</width>
+             <height>38</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>打开文件夹</string>
            </property>
           </widget>
          </item>

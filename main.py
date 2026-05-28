@@ -453,16 +453,38 @@ class ConfigWindow(Window):
         self.combo_user.currentIndexChanged.connect(self.refresh_ui)
         self.btn_close.clicked.connect(self.save_config)
         self.btn_file.clicked.connect(self.open_file)
+        if hasattr(self, "btn_open_account"):
+            self.btn_open_account.clicked.connect(self.open_current_account_dir)
 
     def simplify_config_ui(self):
-        self.setMinimumSize(680, 560)
+        self.setMinimumSize(760, 560)
         self.btn_file.setText("重新选择目录")
+        if hasattr(self, "btn_open_account"):
+            self.btn_open_account.setText("打开文件夹")
         self.btn_close.setText("保存设置")
         self.check_is_clean.setText("启用这个账号的清理")
         self.check_picdown.setText("图片")
         self.check_files.setText("收到的文档")
         self.check_video.setText("视频")
         self.check_picscache.setText("图片缓存、小程序和公众号缓存")
+
+    def open_current_account_dir(self):
+        self.config = load_config_file()
+        current_user = self.combo_user.currentText()
+        for value in self.config.get("users", []):
+            if value.get("wechat_id") == current_user:
+                data_dir = value.get("data_dir")
+                if data_dir and os.path.isdir(data_dir):
+                    try:
+                        os.startfile(data_dir)
+                    except OSError as e:
+                        self.setWarninginfo(f"打开文件夹失败：{e}")
+                        return
+                    self.setSuccessinfo(f"已打开账号文件夹：{data_dir}")
+                    return
+                self.setWarninginfo("当前账号文件夹不存在，请重新选择目录。")
+                return
+        self.setWarninginfo("没有找到当前账号的文件夹路径。")
 
     def open_file(self):
         openfile_path = QFileDialog.getExistingDirectory(self, '选择微信数据目录', '')
