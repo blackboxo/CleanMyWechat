@@ -85,12 +85,15 @@ DEFAULT_GLOBAL_CONFIG = {
     "auto_clean_confirm": True,
     "run_at_startup": False,
     "startup_clean_cache_only": False,
-    "direct_delete": False,
-    "scan_system_cache": True,
-    "scan_wechat4_cache": True,
-    "scan_mini_program_cache": True,
-    "scan_wxwork_cache": True
+    "direct_delete": False
 }
+
+LEGACY_GLOBAL_CONFIG_KEYS = (
+    "scan_system_cache",
+    "scan_wechat4_cache",
+    "scan_mini_program_cache",
+    "scan_wxwork_cache",
+)
 
 DEFAULT_USER_EXTRA = {
     # 新增新版微信和企业微信常见目录，默认开启扫描，但仍受“保留天数”和“清理前确认”控制。
@@ -112,7 +115,7 @@ DEFAULT_USER_EXTRA = {
     "clean_ext_groups": {
         "image": True,
         "video": True,
-        "document": False,
+        "document": True,
         "archive": True,
         "cache": True,
         "other": True
@@ -197,6 +200,8 @@ def ensure_config_defaults(config):
     global_config = config.setdefault("global", {})
     for key, value in DEFAULT_GLOBAL_CONFIG.items():
         global_config.setdefault(key, value)
+    for key in LEGACY_GLOBAL_CONFIG_KEYS:
+        global_config.pop(key, None)
 
     for index, user in enumerate(config.get("users", [])):
         for key, value in DEFAULT_USER_EXTRA.items():
@@ -630,6 +635,18 @@ class ConfigWindow(Window):
                 value["clean_file"] = self.check_files.isChecked()
                 value["clean_video"] = self.check_video.isChecked()
                 value["clean_pic_cache"] = self.check_picscache.isChecked()
+                value["clean_miniprogram_cache"] = value["clean_pic_cache"]
+                value["clean_system_cache"] = value["clean_pic_cache"]
+                value["clean_log_cache"] = value["clean_pic_cache"]
+                value["clean_web_cache"] = value["clean_pic_cache"]
+                value["clean_ext_groups"] = {
+                    "image": value["clean_pic"],
+                    "video": value["clean_video"],
+                    "document": value["clean_file"],
+                    "archive": value["clean_file"],
+                    "cache": value["clean_pic_cache"],
+                    "other": value["clean_file"]
+                }
                 save_json(CONFIG_PATH, self.config)
                 apply_startup_setting(self.config)
                 if notify:
@@ -999,10 +1016,11 @@ class MainWindow(Window):
         return False
 
     def category_enabled(self, user_config, file_path, category, default_category):
-        ext_group = get_file_type(file_path, default_category)
-        ext_groups = user_config.get("clean_ext_groups", {})
-        if not ext_groups.get(ext_group, True):
-            return False
+        if user_config.get("use_advanced_ext_groups", False):
+            ext_group = get_file_type(file_path, default_category)
+            ext_groups = user_config.get("clean_ext_groups", {})
+            if not ext_groups.get(ext_group, True):
+                return False
 
         # 保留原来的四个勾选项逻辑，同时做更细的扩展名过滤。
         if category == "cache":
@@ -1087,11 +1105,19 @@ class MainWindow(Window):
             detail_lines.append(f"[旧月份文件夹] {CATEGORY_NAME.get(category, category)}  {dir_path}")
         return True
 
+    def allow_month_dir_cleanup(self, root_path, category):
+        if category != "file":
+            return True
+        parts = {part.lower() for part in Path(str(root_path)).parts}
+        mixed_file_dirs = {"msgattach", "attach", "xwechat_files"}
+        return not bool(parts & mixed_file_dirs)
+
     def scan_files_recursive(self, root_path, now, day, category, file_list, file_set, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts):
         # 用 os.walk 递归扫描，解决新版微信多层目录扫不到的问题。
         if not root_path or not os.path.exists(root_path):
             return
         try:
+            allow_month_dirs = self.allow_month_dir_cleanup(root_path, category)
             for root, dirs, files in os.walk(root_path):
                 # 程序组件目录不递归，防止把运行库和插件误当成缓存。
                 dirs[:] = [d for d in dirs if d.lower() not in PROTECTED_DIR_NAMES]
@@ -1106,10 +1132,11 @@ class MainWindow(Window):
                     dirs[:] = []
                     continue
                 dirs_to_skip = []
-                for dirname in list(dirs):
-                    dir_path = os.path.join(root, dirname)
-                    if self.add_month_dir_if_expired(dir_path, dirname, now, day, category, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths):
-                        dirs_to_skip.append(dirname)
+                if allow_month_dirs:
+                    for dirname in list(dirs):
+                        dir_path = os.path.join(root, dirname)
+                        if self.add_month_dir_if_expired(dir_path, dirname, now, day, category, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths):
+                            dirs_to_skip.append(dirname)
                 if dirs_to_skip:
                     dirs[:] = [d for d in dirs if d not in dirs_to_skip]
                 for filename in files:
@@ -1289,10 +1316,10 @@ class MainWindow(Window):
             scan_dirs.append((correct_path / 'msg/attach', 'file'))
             scan_dirs.append((correct_path / 'xwechat_files', 'file'))
 
-        if user_config.get("clean_miniprogram_cache", True):
+        if picCacheCheck and user_config.get("clean_miniprogram_cache", True):
             scan_dirs.extend(self.get_miniprogram_dirs(str(correct_path)))
 
-        if include_system_cache and user_config.get("clean_system_cache", True):
+        if include_system_cache and picCacheCheck and user_config.get("clean_system_cache", True):
             scan_dirs.extend(self.get_system_cache_dirs(client_type))
 
         for scan_path, category in self.normalize_scan_dirs(scan_dirs):
