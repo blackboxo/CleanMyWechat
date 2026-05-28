@@ -1376,7 +1376,7 @@ class MainWindow(Window):
             content = line.replace("[旧月份文件夹]", "", 1).strip()
             parts = re.split(r'\s{2,}', content, maxsplit=1)
             if len(parts) == 2:
-                return ("旧月份文件夹", parts[0], parts[1])
+                return (f"旧月份文件夹/{parts[0]}", "-", parts[1])
             return ("旧月份文件夹", "-", content)
         match = re.match(r'^\[(?P<category>[^\]]+)\]\s+(?P<size>.+?)\s{2,}(?P<path>.+)$', line)
         if match:
@@ -1550,7 +1550,7 @@ class MainWindow(Window):
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Interactive)
         table.setColumnWidth(0, 96)
         table.setColumnWidth(1, 92)
-        table.setColumnWidth(2, 900)
+        table.setColumnWidth(2, 1200)
 
         rows = [self.parse_preview_detail_line(line) for line in detail_lines[:1200]]
         rows = [row for row in rows if row]
@@ -1562,7 +1562,7 @@ class MainWindow(Window):
                     item.setToolTip(text)
                     item.setData(Qt.UserRole, text)
                 table.setItem(row_index, column_index, item)
-        table.cellClicked.connect(lambda row, column: self.open_preview_path(table, row, column))
+        table.cellDoubleClicked.connect(lambda row, column: self.open_preview_path(table, row, column))
         root_layout.addWidget(table, 1)
 
         if len(detail_lines) > len(rows):
