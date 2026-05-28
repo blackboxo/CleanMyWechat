@@ -84,7 +84,7 @@ DEFAULT_GLOBAL_CONFIG = {
     "auto_clean_interval_days": 30,
     "auto_clean_confirm": True,
     "run_at_startup": False,
-    "startup_clean_cache_only": True,
+    "startup_clean_cache_only": False,
     "direct_delete": False,
     "scan_system_cache": True,
     "scan_wechat4_cache": True,
@@ -341,9 +341,9 @@ def apply_startup_setting(config):
         app_name = "CleanMyWechat"
         global_config = config.get("global", {})
         if getattr(sys, 'frozen', False):
-            command = '"{}"'.format(sys.executable)
+            command = '"{}" --startup'.format(sys.executable)
         else:
-            command = '"{}" "{}"'.format(sys.executable, os.path.abspath(__file__))
+            command = '"{}" "{}" --startup'.format(sys.executable, os.path.abspath(__file__))
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
         if global_config.get("run_at_startup", False):
             winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, command)
@@ -1656,13 +1656,6 @@ class MainWindow(Window):
                 account_dir = value.get("data_dir")
                 if not account_dir and i < len(self.config.get("data_dir", [])):
                     account_dir = self.config["data_dir"][i]
-                if auto_mode and self.config.get("global", {}).get("startup_clean_cache_only", True):
-                    # 自动/开机清理时可只扫缓存，避免没人看屏幕时处理普通文件。
-                    value = dict(value)
-                    value["clean_file"] = False
-                    value["clean_pic"] = False
-                    value["clean_video"] = False
-                    value["clean_pic_cache"] = True
                 self.get_fileNum(account_dir,
                                  int(value.get("clean_days", 365)),
                                  value.get("clean_pic_cache", True), value.get("clean_file", False),
@@ -1746,6 +1739,8 @@ class MainWindow(Window):
             if os.path.exists(CONFIG_PATH):
                 config = load_config_file()
                 apply_startup_setting(config)
+                if "--startup" not in sys.argv:
+                    return
                 if self.should_run_auto_clean(config):
                     self.auto_clean_running = True
                     self.setSuccessinfo("已到自动清理周期，正在扫描...")
