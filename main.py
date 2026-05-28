@@ -2,7 +2,7 @@ import sys
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QGraphicsDropShadowEffect, QListWidgetItem, QListView, \
     QWidget, QLabel, QFrame, QHBoxLayout, QVBoxLayout, QGridLayout, QFileDialog, QMessageBox, QTableWidget, \
-    QTableWidgetItem, QHeaderView, QPushButton, QAbstractItemView, QScrollArea
+    QTableWidgetItem, QHeaderView, QPushButton, QAbstractItemView
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint, QTimer
 from PyQt5.QtGui import QMouseEvent, QCursor, QColor
 from PyQt5.uic import loadUi
@@ -466,7 +466,7 @@ class ConfigWindow(Window):
             self.btn_open_account.clicked.connect(self.open_current_account_dir)
 
     def simplify_config_ui(self):
-        self.setMinimumSize(780, 760)
+        self.setMinimumSize(780, 860)
         self.btn_file.setText("重新选择目录")
         if hasattr(self, "btn_open_account"):
             self.btn_open_account.setText("打开文件夹")
@@ -659,46 +659,10 @@ class ConfigWindow(Window):
     def update_config(self):
         self.persist_current_config(notify=True, emit_signal=True)
 
-    def install_scroll_area(self):
-        content = self.centralWidget()
-        if not content:
-            return
-        content.setFixedWidth(760)
-        content.setMinimumHeight(1040)
-        self.scroll_area = QScrollArea(self)
-        self.scroll_area.setWidgetResizable(False)
-        self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setStyleSheet("""
-            QScrollArea {
-                background-color: transparent;
-                border: 0;
-            }
-            QScrollBar:vertical {
-                background-color: #edf7f1;
-                width: 8px;
-                margin: 8px 0 8px 0;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #c8e8d2;
-                border-radius: 4px;
-                min-height: 32px;
-            }
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {
-                height: 0;
-            }
-        """)
-        self.setCentralWidget(self.scroll_area)
-        self.scroll_area.setWidget(content)
-
     def __init__(self):
         super().__init__()
         loadUi(working_dir + "/images/config.ui", self)
 
-        self.install_scroll_area()
         self._frame()
         self._connect()
         self.simplify_config_ui()
