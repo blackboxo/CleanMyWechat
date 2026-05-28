@@ -1111,6 +1111,28 @@ class MainWindow(Window):
                 result.extend(self.find_cache_dirs_under(p, max_depth=5))
         return result
 
+    def normalize_scan_dirs(self, scan_dirs):
+        existing = []
+        seen = set()
+        for scan_path, category in scan_dirs:
+            path = os.path.abspath(os.path.normpath(str(scan_path)))
+            if not os.path.exists(path):
+                continue
+            key = (os.path.normcase(path), category)
+            if key in seen:
+                continue
+            seen.add(key)
+            existing.append((path, category))
+
+        # If the same category already scans a parent directory, do not scan the nested child again.
+        normalized = []
+        for path, category in sorted(existing, key=lambda item: len(Path(item[0]).parts)):
+            if any(category == parent_category and is_sub_path(path, parent_path)
+                   for parent_path, parent_category in normalized):
+                continue
+            normalized.append((path, category))
+        return normalized
+
     def get_fileNum(self, path, day, picCacheCheck, fileCheck, picCheck,
                     videoCheck, file_list, dir_list, user_config=None, stats=None, detail_lines=None, file_set=None, dir_set=None, include_system_cache=False):
         # 保留原函数名，内部增强为新版扫描逻辑，减少对原项目结构的影响。
@@ -1183,7 +1205,7 @@ class MainWindow(Window):
         if include_system_cache and user_config.get("clean_system_cache", True):
             scan_dirs.extend(self.get_system_cache_dirs(client_type))
 
-        for scan_path, category in scan_dirs:
+        for scan_path, category in self.normalize_scan_dirs(scan_dirs):
             self.scan_files_recursive(str(scan_path), now, day, category, file_list, file_set, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts)
 
     # 原来的按月目录判断函数保留，避免旧代码引用时报错。
@@ -1272,6 +1294,27 @@ class MainWindow(Window):
             )
         return ("其他", "-", line)
 
+    def open_preview_path(self, table, row, column):
+        if column != 2:
+            return
+        item = table.item(row, column)
+        if not item:
+            return
+        target_path = item.data(Qt.UserRole) or item.text()
+        if not target_path:
+            return
+        try:
+            if os.path.exists(target_path):
+                os.startfile(target_path)
+            else:
+                parent_path = os.path.dirname(target_path)
+                if parent_path and os.path.isdir(parent_path):
+                    os.startfile(parent_path)
+                else:
+                    self.setWarninginfo("文件不存在，可能已经被移动或删除。")
+        except OSError as e:
+            self.setWarninginfo(f"打开失败：{e}")
+
     def show_preview_dialog(self, total_stats, detail_lines):
         # 清理前预览，不再一点开始就直接进回收站。
         preview_text = self.build_preview_text(total_stats, detail_lines)
@@ -1318,6 +1361,9 @@ class MainWindow(Window):
                 font-size: 12px;
                 selection-background-color: #e8f6ed;
                 selection-color: #21352b;
+            }
+            QTableWidget::item {
+                padding: 4px 6px;
             }
             QHeaderView::section {
                 background-color: #e8f6ed;
@@ -1400,11 +1446,14 @@ class MainWindow(Window):
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setAlternatingRowColors(True)
+        table.setTextElideMode(Qt.ElideNone)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
-        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Interactive)
         table.setColumnWidth(0, 96)
         table.setColumnWidth(1, 92)
+        table.setColumnWidth(2, 900)
 
         rows = [self.parse_preview_detail_line(line) for line in detail_lines[:1200]]
         rows = [row for row in rows if row]
@@ -1414,7 +1463,9 @@ class MainWindow(Window):
                 item = QTableWidgetItem(text)
                 if column_index == 2:
                     item.setToolTip(text)
+                    item.setData(Qt.UserRole, text)
                 table.setItem(row_index, column_index, item)
+        table.cellClicked.connect(lambda row, column: self.open_preview_path(table, row, column))
         root_layout.addWidget(table, 1)
 
         if len(detail_lines) > len(rows):
