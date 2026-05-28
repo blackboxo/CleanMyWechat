@@ -466,7 +466,7 @@ class ConfigWindow(Window):
             self.btn_open_account.clicked.connect(self.open_current_account_dir)
 
     def simplify_config_ui(self):
-        self.setMinimumSize(780, 860)
+        self.setMinimumSize(780, 960)
         self.btn_file.setText("重新选择目录")
         if hasattr(self, "btn_open_account"):
             self.btn_open_account.setText("打开文件夹")

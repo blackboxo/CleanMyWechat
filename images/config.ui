@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>780</width>
-    <height>860</height>
+    <height>960</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>780</width>
-    <height>860</height>
+    <height>960</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -201,7 +201,7 @@ QPushButton#btn_close:hover {
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>170</height>
+           <height>186</height>
           </size>
          </property>
          <layout class="QVBoxLayout" name="accountSectionLayout">
@@ -301,7 +301,7 @@ QPushButton#btn_close:hover {
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>198</height>
+           <height>260</height>
           </size>
          </property>
          <layout class="QVBoxLayout" name="scopeSectionLayout">
