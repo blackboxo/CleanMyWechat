@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>780</width>
-    <height>760</height>
+    <height>900</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>780</width>
-    <height>760</height>
+    <height>900</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -153,13 +153,13 @@ QPushButton#btn_close:hover {
      <widget class="QFrame" name="mainFrame">
       <layout class="QVBoxLayout" name="verticalLayout">
        <property name="spacing">
-        <number>14</number>
+        <number>12</number>
        </property>
        <property name="leftMargin">
         <number>32</number>
        </property>
        <property name="topMargin">
-        <number>24</number>
+        <number>22</number>
        </property>
        <property name="rightMargin">
         <number>32</number>
@@ -182,7 +182,7 @@ QPushButton#btn_close:hover {
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>58</height>
+           <height>54</height>
           </size>
          </property>
          <property name="text">
@@ -198,6 +198,12 @@ QPushButton#btn_close:hover {
        </item>
        <item>
         <widget class="QFrame" name="accountSection">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>158</height>
+          </size>
+         </property>
          <layout class="QVBoxLayout" name="accountSectionLayout">
           <property name="spacing">
            <number>12</number>
@@ -292,6 +298,12 @@ QPushButton#btn_close:hover {
        </item>
        <item>
         <widget class="QFrame" name="scopeSection">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>170</height>
+          </size>
+         </property>
          <layout class="QVBoxLayout" name="scopeSectionLayout">
           <property name="spacing">
            <number>12</number>
@@ -417,6 +429,12 @@ QPushButton#btn_close:hover {
        </item>
        <item>
         <widget class="QFrame" name="deleteSection">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>108</height>
+          </size>
+         </property>
          <layout class="QVBoxLayout" name="deleteSectionLayout">
           <property name="spacing">
            <number>8</number>
@@ -455,6 +473,12 @@ QPushButton#btn_close:hover {
        </item>
        <item>
         <widget class="QFrame" name="startupSection">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>108</height>
+          </size>
+         </property>
          <layout class="QVBoxLayout" name="startupSectionLayout">
           <property name="spacing">
            <number>8</number>
@@ -493,6 +517,12 @@ QPushButton#btn_close:hover {
        </item>
        <item>
         <widget class="QFrame" name="scheduleSection">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>132</height>
+          </size>
+         </property>
          <layout class="QVBoxLayout" name="scheduleSectionLayout">
           <property name="spacing">
            <number>10</number>
