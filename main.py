@@ -1,7 +1,8 @@
 import sys
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsDropShadowEffect, QListWidgetItem, QListView, QWidget, \
-    QLabel, QHBoxLayout, QFileDialog, QMessageBox, QTableWidgetItem, QHeaderView
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QGraphicsDropShadowEffect, QListWidgetItem, QListView, \
+    QWidget, QLabel, QHBoxLayout, QVBoxLayout, QGridLayout, QFileDialog, QMessageBox, QTableWidget, \
+    QTableWidgetItem, QHeaderView, QPushButton, QAbstractItemView
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint, QTimer
 from PyQt5.QtGui import QMouseEvent, QCursor, QColor
 from PyQt5.uic import loadUi
@@ -1256,6 +1257,21 @@ class MainWindow(Window):
         lines.append("文件会先进入回收站，不会直接永久删除。")
         return "\n".join(lines)
 
+    def parse_preview_detail_line(self, line):
+        line = line.strip()
+        if not line:
+            return None
+        if line.startswith("[空文件夹]"):
+            return ("空文件夹", "-", line.replace("[空文件夹]", "", 1).strip())
+        match = re.match(r'^\[(?P<category>[^\]]+)\]\s+(?P<size>.+?)\s{2,}(?P<path>.+)$', line)
+        if match:
+            return (
+                match.group("category").strip(),
+                match.group("size").strip(),
+                match.group("path").strip()
+            )
+        return ("其他", "-", line)
+
     def show_preview_dialog(self, total_stats, detail_lines):
         # 清理前预览，不再一点开始就直接进回收站。
         preview_text = self.build_preview_text(total_stats, detail_lines)
@@ -1267,17 +1283,158 @@ class MainWindow(Window):
         except Exception:
             logging.exception("写入扫描预览失败")
 
-        msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Warning)
-        msg.setWindowTitle("确认清理")
-        msg.setText(preview_text)
-        msg.setInformativeText("确认后才会开始移动文件。")
-        if detail_lines:
-            msg.setDetailedText("\n".join(detail_lines[:800]))
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        msg.button(QMessageBox.Yes).setText("确认清理")
-        msg.button(QMessageBox.No).setText("取消")
-        return msg.exec_() == QMessageBox.Yes
+        dialog = QDialog(self)
+        dialog.setWindowTitle("确认清理")
+        dialog.setMinimumSize(820, 560)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #edf7f1;
+                font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+                color: #21352b;
+            }
+            QLabel#previewTitle {
+                color: #21352b;
+                font-size: 22px;
+                font-weight: 700;
+            }
+            QLabel#previewSubtitle {
+                color: #5e7468;
+                font-size: 13px;
+            }
+            QLabel#previewCard {
+                color: #395246;
+                background-color: #f8fbf7;
+                border: 1px solid #dcebe1;
+                border-radius: 14px;
+                padding: 12px 14px;
+                font-size: 13px;
+            }
+            QTableWidget {
+                background-color: #f8fbf7;
+                border: 1px solid #dcebe1;
+                border-radius: 14px;
+                gridline-color: #e2eee6;
+                color: #31483d;
+                font-size: 12px;
+                selection-background-color: #e8f6ed;
+                selection-color: #21352b;
+            }
+            QHeaderView::section {
+                background-color: #e8f6ed;
+                color: #486256;
+                border: 0;
+                border-bottom: 1px solid #d3e4d8;
+                padding: 8px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton {
+                min-height: 38px;
+                padding: 0 18px;
+                border-radius: 19px;
+                font-size: 14px;
+            }
+            QPushButton#cancelPreview {
+                color: #486256;
+                background-color: #f1f7f3;
+                border: 1px solid #d3e4d8;
+            }
+            QPushButton#confirmPreview {
+                color: #f8fbf7;
+                background-color: #16a85a;
+                border: 1px solid #149550;
+                font-weight: 600;
+            }
+            QPushButton#cancelPreview:hover {
+                background-color: #e8f6ed;
+                border-color: #b9dfc5;
+            }
+            QPushButton#confirmPreview:hover {
+                background-color: #20b966;
+                border-color: #18a75a;
+            }
+        """)
+
+        root_layout = QVBoxLayout(dialog)
+        root_layout.setContentsMargins(28, 24, 28, 22)
+        root_layout.setSpacing(14)
+
+        title = QLabel("清理前请确认")
+        title.setObjectName("previewTitle")
+        subtitle = QLabel("确认后文件会先进入回收站，不会直接永久删除。")
+        subtitle.setObjectName("previewSubtitle")
+        root_layout.addWidget(title)
+        root_layout.addWidget(subtitle)
+
+        summary_layout = QGridLayout()
+        summary_layout.setHorizontalSpacing(12)
+        summary_layout.setVerticalSpacing(12)
+        summary_items = [
+            ("预计释放", format_size(total_stats.get("total_size", 0))),
+            ("文件", f"{total_stats.get('total_files', 0)} 个"),
+            ("空文件夹", f"{total_stats.get('total_dirs', 0)} 个"),
+        ]
+        for index, (label, value) in enumerate(summary_items):
+            card = QLabel(f"{label}\n{value}")
+            card.setObjectName("previewCard")
+            card.setAlignment(Qt.AlignCenter)
+            summary_layout.addWidget(card, 0, index)
+        root_layout.addLayout(summary_layout)
+
+        category_lines = []
+        for key, name in CATEGORY_NAME.items():
+            item = total_stats["categories"].get(key, {"count": 0, "size": 0})
+            if item["count"] > 0:
+                category_lines.append(f"{name}：{item['count']} 个，{format_size(item['size'])}")
+        if category_lines:
+            category_label = QLabel("；".join(category_lines))
+            category_label.setObjectName("previewSubtitle")
+            category_label.setWordWrap(True)
+            root_layout.addWidget(category_label)
+
+        table = QTableWidget(dialog)
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["类型", "大小", "路径"])
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setAlternatingRowColors(True)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        table.setColumnWidth(0, 96)
+        table.setColumnWidth(1, 92)
+
+        rows = [self.parse_preview_detail_line(line) for line in detail_lines[:1200]]
+        rows = [row for row in rows if row]
+        table.setRowCount(len(rows))
+        for row_index, (category, size, path) in enumerate(rows):
+            for column_index, text in enumerate((category, size, path)):
+                item = QTableWidgetItem(text)
+                if column_index == 2:
+                    item.setToolTip(text)
+                table.setItem(row_index, column_index, item)
+        root_layout.addWidget(table, 1)
+
+        if len(detail_lines) > len(rows):
+            more_label = QLabel(f"当前仅显示前 {len(rows)} 条，完整列表已保存到 {PREVIEW_PATH}")
+            more_label.setObjectName("previewSubtitle")
+            root_layout.addWidget(more_label)
+
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        cancel_button = QPushButton("取消")
+        cancel_button.setObjectName("cancelPreview")
+        confirm_button = QPushButton("确认清理")
+        confirm_button.setObjectName("confirmPreview")
+        cancel_button.clicked.connect(dialog.reject)
+        confirm_button.clicked.connect(dialog.accept)
+        button_layout.addWidget(cancel_button)
+        button_layout.addWidget(confirm_button)
+        root_layout.addLayout(button_layout)
+
+        return dialog.exec_() == QDialog.Accepted
 
     def callback(self, v):
         self.bar_progress.setRange(0, 100)
