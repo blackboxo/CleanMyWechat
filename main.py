@@ -1070,6 +1070,8 @@ class MainWindow(Window):
     def add_month_dir_if_expired(self, dir_path, dirname, now, day, category, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths):
         if not self.is_expired_month_dir(dirname, now, day):
             return False
+        if not self.category_enabled(user_config, dir_path, category, category):
+            return False
         if user_config.get("use_whitelist", True):
             for white_dir in whitelist_paths:
                 if white_dir and is_sub_path(dir_path, white_dir):
@@ -1122,6 +1124,8 @@ class MainWindow(Window):
                             timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(dir_path))
                             diff = (now - timestamp).days
                             if diff >= day and dir_path not in dir_set:
+                                if not self.category_enabled(user_config, dir_path, category, category):
+                                    continue
                                 dir_set.add(dir_path)
                                 dir_list.append(dir_path)
                                 stats["total_dirs"] += 1
