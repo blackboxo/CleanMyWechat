@@ -1050,6 +1050,9 @@ class MainWindow(Window):
             # 日志、网页缓存这类路径即使扩展名普通，也归入缓存，方便用户理解。
             if category == "cache":
                 real_category = "cache"
+            # 视频目录里的 jpg/dat 等文件通常是缩略图或视频附属数据，跟随视频选项清理。
+            if category == "video":
+                real_category = "video"
             if not self.category_enabled(user_config, file_path, real_category, category):
                 return
             if file_path in file_set:
