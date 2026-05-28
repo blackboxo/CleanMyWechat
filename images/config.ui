@@ -79,6 +79,7 @@ QComboBox::down-arrow {
 QCheckBox {
     color: #31483d;
     font-size: 14px;
+    min-height: 32px;
     spacing: 12px;
 }
 QCheckBox::indicator {
@@ -204,6 +205,12 @@ QPushButton#btn_close:hover {
            <height>186</height>
           </size>
          </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>186</height>
+          </size>
+         </property>
          <layout class="QVBoxLayout" name="accountSectionLayout">
           <property name="spacing">
            <number>8</number>
@@ -301,7 +308,13 @@ QPushButton#btn_close:hover {
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>278</height>
+           <height>198</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>198</height>
           </size>
          </property>
          <layout class="QVBoxLayout" name="scopeSectionLayout">
@@ -435,6 +448,12 @@ QPushButton#btn_close:hover {
            <height>88</height>
           </size>
          </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>88</height>
+          </size>
+         </property>
          <layout class="QVBoxLayout" name="deleteSectionLayout">
           <property name="spacing">
            <number>8</number>
@@ -479,6 +498,12 @@ QPushButton#btn_close:hover {
            <height>88</height>
           </size>
          </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>88</height>
+          </size>
+         </property>
          <layout class="QVBoxLayout" name="startupSectionLayout">
           <property name="spacing">
            <number>8</number>
@@ -520,6 +545,12 @@ QPushButton#btn_close:hover {
          <property name="minimumSize">
           <size>
            <width>0</width>
+           <height>78</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
            <height>78</height>
           </size>
          </property>
