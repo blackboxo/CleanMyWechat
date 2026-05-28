@@ -153,7 +153,7 @@ QPushButton#btn_close:hover {
      <widget class="QFrame" name="mainFrame">
       <layout class="QVBoxLayout" name="verticalLayout">
        <property name="spacing">
-        <number>10</number>
+        <number>14</number>
        </property>
        <property name="leftMargin">
         <number>32</number>
@@ -301,7 +301,7 @@ QPushButton#btn_close:hover {
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>260</height>
+           <height>278</height>
           </size>
          </property>
          <layout class="QVBoxLayout" name="scopeSectionLayout">
@@ -520,12 +520,12 @@ QPushButton#btn_close:hover {
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>104</height>
+           <height>78</height>
           </size>
          </property>
-         <layout class="QVBoxLayout" name="scheduleSectionLayout">
+         <layout class="QHBoxLayout" name="scheduleSectionLayout">
           <property name="spacing">
-           <number>8</number>
+           <number>12</number>
           </property>
           <property name="leftMargin">
            <number>18</number>
@@ -541,56 +541,55 @@ QPushButton#btn_close:hover {
           </property>
           <item>
            <widget class="QCheckBox" name="check_auto_clean">
+            <property name="minimumSize">
+             <size>
+              <width>210</width>
+              <height>36</height>
+             </size>
+            </property>
             <property name="text">
              <string>定期自动清理</string>
             </property>
            </widget>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="autoDaysLayout">
-            <property name="spacing">
-             <number>10</number>
+           <widget class="QLineEdit" name="line_auto_days">
+            <property name="minimumSize">
+             <size>
+              <width>88</width>
+              <height>36</height>
+             </size>
             </property>
-            <item>
-             <widget class="QLineEdit" name="line_auto_days">
-              <property name="minimumSize">
-               <size>
-                <width>88</width>
-                <height>36</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>108</width>
-                <height>16777215</height>
-               </size>
-              </property>
-              <property name="placeholderText">
-               <string>30</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_auto_days">
-              <property name="text">
-               <string>天运行一次</string>
-              </property>
-            </widget>
-            </item>
-            <item>
-             <spacer name="autoDaysSpacer">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
-               <size>
-                <width>20</width>
-                <height>20</height>
-               </size>
-              </property>
-             </spacer>
-            </item>
-           </layout>
+            <property name="maximumSize">
+             <size>
+              <width>108</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>30</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_auto_days">
+            <property name="text">
+             <string>天运行一次</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="autoDaysSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
           </item>
          </layout>
         </widget>
