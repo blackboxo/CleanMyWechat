@@ -963,6 +963,7 @@ class MainWindow(Window):
         return {
             "total_files": 0,
             "total_dirs": 0,
+            "total_month_dirs": 0,
             "total_size": 0,
             "categories": {
                 key: {"count": 0, "size": 0}
@@ -973,6 +974,7 @@ class MainWindow(Window):
     def merge_stats(self, total_stats, add_stats):
         total_stats["total_files"] += add_stats.get("total_files", 0)
         total_stats["total_dirs"] += add_stats.get("total_dirs", 0)
+        total_stats["total_month_dirs"] += add_stats.get("total_month_dirs", 0)
         total_stats["total_size"] += add_stats.get("total_size", 0)
         for key, value in add_stats.get("categories", {}).items():
             total_stats["categories"].setdefault(key, {"count": 0, "size": 0})
@@ -1076,7 +1078,7 @@ class MainWindow(Window):
             return True
         dir_set.add(dir_path)
         dir_list.append(dir_path)
-        stats["total_dirs"] += 1
+        stats["total_month_dirs"] += 1
         stats["categories"].setdefault(category, {"count": 0, "size": 0})
         stats["categories"][category]["count"] += 1
         if len(detail_lines) < 1200:
@@ -1350,7 +1352,11 @@ class MainWindow(Window):
         lines = []
         lines.append("清理前请确认")
         lines.append(f"预计可释放空间：{format_size(total_stats['total_size'])}")
-        lines.append(f"将清理：{total_stats['total_files']} 个文件、{total_stats['total_dirs']} 个空文件夹")
+        lines.append(
+            f"将清理：{total_stats['total_files']} 个文件、"
+            f"{total_stats.get('total_dirs', 0)} 个空文件夹、"
+            f"{total_stats.get('total_month_dirs', 0)} 个旧月份文件夹"
+        )
         lines.append("")
         lines.append("清理内容：")
         for key, name in CATEGORY_NAME.items():
@@ -1360,7 +1366,8 @@ class MainWindow(Window):
         if len(lines) == 5:
             lines.append("- 暂无分类数据")
         lines.append("")
-        if self.config.get("global", {}).get("direct_delete", False):
+        config = getattr(self, "config", {}) or {}
+        if config.get("global", {}).get("direct_delete", False):
             lines.append("当前已开启直接删除，文件不会进入回收站。")
         else:
             lines.append("文件会先进入回收站，不会直接永久删除。")
@@ -1516,6 +1523,7 @@ class MainWindow(Window):
             ("预计释放", format_size(total_stats.get("total_size", 0))),
             ("文件", f"{total_stats.get('total_files', 0)} 个"),
             ("空文件夹", f"{total_stats.get('total_dirs', 0)} 个"),
+            ("旧月份文件夹", f"{total_stats.get('total_month_dirs', 0)} 个"),
         ]
         for index, (label, value) in enumerate(summary_items):
             card = QLabel(f"{label}\n{value}")
