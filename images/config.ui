@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>760</width>
-    <height>650</height>
+    <width>780</width>
+    <height>760</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>760</width>
-    <height>650</height>
+    <width>780</width>
+    <height>760</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -32,6 +32,15 @@ QFrame#mainFrame {
     border: 1px solid #dcebe1;
     border-radius: 18px;
 }
+QFrame#accountSection, QFrame#scopeSection, QFrame#deleteSection, QFrame#startupSection, QFrame#scheduleSection {
+    background-color: #fbfdfb;
+    border: 1px solid #dcebe1;
+    border-radius: 14px;
+}
+QLabel#label {
+    color: #6a7d72;
+    font-size: 13px;
+}
 QLabel#lab_info {
     color: #395246;
     background-color: #e8f6ed;
@@ -40,13 +49,14 @@ QLabel#lab_info {
     padding: 10px 18px;
     font-size: 14px;
 }
-QLabel#label {
+QLabel.sectionTitle {
+    color: #274135;
+    font-size: 15px;
+    font-weight: 600;
+}
+QLabel.sectionHint, QLabel#label_3, QLabel#label_auto_days {
     color: #6a7d72;
     font-size: 13px;
-}
-QLabel#label_scope, QLabel#label_days, QLabel#label_3, QLabel#label_global, QLabel#label_auto_days {
-    color: #486256;
-    font-size: 14px;
 }
 QComboBox, QLineEdit {
     background-color: #f1f7f3;
@@ -69,12 +79,12 @@ QComboBox::down-arrow {
 QCheckBox {
     color: #31483d;
     font-size: 14px;
-    spacing: 10px;
+    spacing: 12px;
 }
 QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
 }
 QCheckBox::indicator:unchecked {
     background-color: #f8fbf7;
@@ -95,9 +105,8 @@ QCheckBox#check_is_clean {
     font-weight: 600;
 }
 QCheckBox#check_is_clean::indicator {
-    width: 20px;
-    height: 20px;
-    border-radius: 5px;
+    width: 24px;
+    height: 24px;
 }
 QPushButton {
     min-height: 38px;
@@ -144,16 +153,16 @@ QPushButton#btn_close:hover {
      <widget class="QFrame" name="mainFrame">
       <layout class="QVBoxLayout" name="verticalLayout">
        <property name="spacing">
-        <number>18</number>
+        <number>14</number>
        </property>
        <property name="leftMargin">
-        <number>34</number>
+        <number>32</number>
        </property>
        <property name="topMargin">
-        <number>28</number>
+        <number>24</number>
        </property>
        <property name="rightMargin">
-        <number>34</number>
+        <number>32</number>
        </property>
        <property name="bottomMargin">
         <number>24</number>
@@ -173,7 +182,7 @@ QPushButton#btn_close:hover {
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>64</height>
+           <height>58</height>
           </size>
          </property>
          <property name="text">
@@ -188,249 +197,373 @@ QPushButton#btn_close:hover {
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="accountLayout">
-         <property name="spacing">
-          <number>12</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="accountLabel">
-           <property name="minimumSize">
-            <size>
-             <width>82</width>
-             <height>0</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>微信账号</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="combo_user">
-           <property name="minimumSize">
-            <size>
-             <width>230</width>
-             <height>36</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btn_open_account">
-           <property name="minimumSize">
-            <size>
-             <width>112</width>
-             <height>38</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>打开文件夹</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btn_file">
-           <property name="minimumSize">
-            <size>
-             <width>128</width>
-             <height>38</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>重新选择目录</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="check_is_clean">
-         <property name="text">
-          <string>启用这个账号的清理</string>
-         </property>
+        <widget class="QFrame" name="accountSection">
+         <layout class="QVBoxLayout" name="accountSectionLayout">
+          <property name="spacing">
+           <number>12</number>
+          </property>
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>16</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>16</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="accountTitle">
+            <property name="text">
+             <string>账号目录</string>
+            </property>
+            <property name="class" stdset="0">
+             <string>sectionTitle</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="accountLayout">
+            <property name="spacing">
+             <number>12</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="accountLabel">
+              <property name="minimumSize">
+               <size>
+                <width>72</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>微信账号</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="combo_user">
+              <property name="minimumSize">
+               <size>
+                <width>260</width>
+                <height>36</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_open_account">
+              <property name="minimumSize">
+               <size>
+                <width>112</width>
+                <height>38</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>打开文件夹</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btn_file">
+              <property name="minimumSize">
+               <size>
+                <width>128</width>
+                <height>38</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>重新选择目录</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="check_is_clean">
+            <property name="text">
+             <string>启用这个账号的清理</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="label_scope">
-         <property name="text">
-          <string>清理范围</string>
-         </property>
+        <widget class="QFrame" name="scopeSection">
+         <layout class="QVBoxLayout" name="scopeSectionLayout">
+          <property name="spacing">
+           <number>12</number>
+          </property>
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>16</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>16</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="label_scope">
+            <property name="text">
+             <string>清理范围</string>
+            </property>
+            <property name="class" stdset="0">
+             <string>sectionTitle</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QGridLayout" name="scopeLayout">
+            <property name="horizontalSpacing">
+             <number>22</number>
+            </property>
+            <property name="verticalSpacing">
+             <number>12</number>
+            </property>
+            <item row="0" column="0">
+             <widget class="QCheckBox" name="check_picscache">
+              <property name="text">
+               <string>图片缓存、小程序和公众号缓存</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QCheckBox" name="check_picdown">
+              <property name="text">
+               <string>图片</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QCheckBox" name="check_video">
+              <property name="text">
+               <string>视频</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QCheckBox" name="check_files">
+              <property name="text">
+               <string>收到的文档</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="daysLayout">
+            <property name="spacing">
+             <number>10</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_days">
+              <property name="text">
+               <string>保留时间</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>sectionHint</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="line_gobackdays">
+              <property name="minimumSize">
+               <size>
+                <width>88</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>108</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="placeholderText">
+               <string>365</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_3">
+              <property name="text">
+               <string>天以内不清理</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="daysSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
-        <layout class="QGridLayout" name="scopeLayout">
-         <property name="horizontalSpacing">
-          <number>18</number>
-         </property>
-         <property name="verticalSpacing">
-          <number>12</number>
-         </property>
-         <item row="0" column="0">
-          <widget class="QCheckBox" name="check_picscache">
-           <property name="text">
-            <string>图片缓存、小程序和公众号缓存</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QCheckBox" name="check_picdown">
-           <property name="text">
-            <string>图片</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0">
-          <widget class="QCheckBox" name="check_video">
-           <property name="text">
-            <string>视频</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QCheckBox" name="check_files">
-           <property name="text">
-            <string>收到的文档</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="daysLayout">
-         <property name="spacing">
-          <number>10</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="label_days">
-           <property name="text">
-            <string>保留时间</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="line_gobackdays">
-           <property name="minimumSize">
-            <size>
-             <width>80</width>
-             <height>36</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>96</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="placeholderText">
-            <string>365</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>天以内不清理</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="daysSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-       </layout>
-      </item>
-       <item>
-        <widget class="QLabel" name="label_global">
-         <property name="text">
-          <string>安全与自动化</string>
-         </property>
+        <widget class="QFrame" name="deleteSection">
+         <layout class="QVBoxLayout" name="deleteSectionLayout">
+          <property name="spacing">
+           <number>8</number>
+          </property>
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>14</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>14</number>
+          </property>
+          <item>
+           <widget class="QCheckBox" name="check_direct_delete">
+            <property name="text">
+             <string>直接删除，不移动到回收站</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="directDeleteHint">
+            <property name="text">
+             <string>危险操作。默认关闭，开启后删除内容无法从回收站恢复。</string>
+            </property>
+            <property name="class" stdset="0">
+             <string>sectionHint</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
-        <layout class="QGridLayout" name="globalLayout">
-         <property name="horizontalSpacing">
-          <number>18</number>
-         </property>
-         <property name="verticalSpacing">
-          <number>12</number>
-         </property>
-         <item row="0" column="0">
-          <widget class="QCheckBox" name="check_direct_delete">
-           <property name="text">
-            <string>直接删除，不移动到回收站</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QCheckBox" name="check_run_at_startup">
-           <property name="text">
-            <string>开机自启动</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0">
-          <widget class="QCheckBox" name="check_auto_clean">
-           <property name="text">
-            <string>定期自动清理</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <layout class="QHBoxLayout" name="autoDaysLayout">
-           <property name="spacing">
-            <number>10</number>
-           </property>
-           <item>
-            <widget class="QLineEdit" name="line_auto_days">
-             <property name="minimumSize">
-              <size>
-               <width>80</width>
-               <height>36</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>96</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <property name="placeholderText">
-              <string>30</string>
-             </property>
+        <widget class="QFrame" name="startupSection">
+         <layout class="QVBoxLayout" name="startupSectionLayout">
+          <property name="spacing">
+           <number>8</number>
+          </property>
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>14</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>14</number>
+          </property>
+          <item>
+           <widget class="QCheckBox" name="check_run_at_startup">
+            <property name="text">
+             <string>开机自启动</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="startupHint">
+            <property name="text">
+             <string>启动 Windows 后自动打开 Clean My Wechat。</string>
+            </property>
+            <property name="class" stdset="0">
+             <string>sectionHint</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="scheduleSection">
+         <layout class="QVBoxLayout" name="scheduleSectionLayout">
+          <property name="spacing">
+           <number>10</number>
+          </property>
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>14</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>14</number>
+          </property>
+          <item>
+           <widget class="QCheckBox" name="check_auto_clean">
+            <property name="text">
+             <string>定期自动清理</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="autoDaysLayout">
+            <property name="spacing">
+             <number>10</number>
+            </property>
+            <item>
+             <widget class="QLineEdit" name="line_auto_days">
+              <property name="minimumSize">
+               <size>
+                <width>88</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>108</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="placeholderText">
+               <string>30</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_auto_days">
+              <property name="text">
+               <string>天运行一次</string>
+              </property>
             </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_auto_days">
-             <property name="text">
-              <string>天运行一次</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="autoDaysSpacer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </item>
-        </layout>
+            </item>
+            <item>
+             <spacer name="autoDaysSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item>
         <spacer name="bottomSpacer">
@@ -440,7 +573,7 @@ QPushButton#btn_close:hover {
          <property name="sizeHint" stdset="0">
           <size>
            <width>20</width>
-           <height>18</height>
+           <height>10</height>
           </size>
          </property>
         </spacer>
