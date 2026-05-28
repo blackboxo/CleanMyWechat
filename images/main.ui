@@ -6,120 +6,126 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>499</width>
-    <height>466</height>
+    <width>560</width>
+    <height>620</height>
    </rect>
   </property>
-  <property name="windowTitle">
-   <string>Wechat Cleaner</string>
+  <property name="minimumSize">
+   <size>
+    <width>560</width>
+    <height>620</height>
+   </size>
   </property>
-  <property name="autoFillBackground">
-   <bool>false</bool>
+  <property name="windowTitle">
+   <string>Clean My Wechat</string>
   </property>
   <property name="styleSheet">
    <string notr="true">* {
-	font: 9pt &quot;微软雅黑&quot;;
+    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+    color: #21352b;
 }
-</string>
+QWidget#centralwidget {
+    background-color: #edf7f1;
+}
+QFrame#mainFrame {
+    background-color: #f8fbf7;
+    border: 1px solid #dcebe1;
+    border-radius: 18px;
+}
+QLabel#lab_info {
+    color: #395246;
+    background-color: #e8f6ed;
+    border: 1px solid #c8e8d2;
+    border-radius: 14px;
+    padding: 10px 18px;
+    font-size: 14px;
+}
+QLabel#lab_logo {
+    image: url(:/icon/wechat.png);
+    background-color: #eaf8ee;
+    border: 1px solid #c9ecd3;
+    border-radius: 92px;
+    padding: 18px;
+}
+QProgressBar {
+    background-color: #e5efe8;
+    border: 1px solid #d1e2d6;
+    border-radius: 13px;
+    color: #395246;
+    font-size: 12px;
+    text-align: center;
+}
+QProgressBar::chunk {
+    background-color: #2fbf68;
+    border-radius: 12px;
+}
+QLabel#lab_clean {
+    color: #f8fbf7;
+    background-color: #16a85a;
+    border: 1px solid #149550;
+    border-radius: 24px;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 0 34px;
+}
+QLabel#lab_clean:hover {
+    background-color: #20b966;
+    border-color: #18a75a;
+}
+QLabel#lab_config, QLabel#lab_close {
+    color: #486256;
+    background-color: #f1f7f3;
+    border: 1px solid #d3e4d8;
+    border-radius: 18px;
+    font-size: 14px;
+    padding: 0 16px;
+}
+QLabel#lab_config:hover, QLabel#lab_close:hover {
+    color: #159452;
+    background-color: #e8f6ed;
+    border-color: #b9dfc5;
+}
+QLabel#lab_about {
+    color: #6a7d72;
+    font-size: 13px;
+}</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <property name="styleSheet">
-    <string notr="true"/>
-   </property>
    <layout class="QGridLayout" name="gridLayout">
-    <item row="2" column="1">
-     <spacer name="horizontalSpacer_2">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="0" column="1">
-     <spacer name="horizontalSpacer">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="1" column="2">
-     <spacer name="verticalSpacer_2">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="1" column="0">
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="1" column="1">
+    <property name="leftMargin">
+     <number>28</number>
+    </property>
+    <property name="topMargin">
+     <number>28</number>
+    </property>
+    <property name="rightMargin">
+     <number>28</number>
+    </property>
+    <property name="bottomMargin">
+     <number>28</number>
+    </property>
+    <item row="0" column="0">
      <widget class="QFrame" name="mainFrame">
-      <property name="minimumSize">
-       <size>
-        <width>3</width>
-        <height>3</height>
-       </size>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">.QFrame {
-	background: rgb(245, 245, 245);
-	border-radius: 3px;
-}</string>
-      </property>
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
-      </property>
       <layout class="QVBoxLayout" name="verticalLayout">
+       <property name="spacing">
+        <number>18</number>
+       </property>
+       <property name="leftMargin">
+        <number>34</number>
+       </property>
+       <property name="topMargin">
+        <number>30</number>
+       </property>
+       <property name="rightMargin">
+        <number>34</number>
+       </property>
+       <property name="bottomMargin">
+        <number>24</number>
+       </property>
        <item>
-        <widget class="QLabel" name="lab_info">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>40</height>
-          </size>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">.QLabel {
-	border:1px solid #b7eb8f;
-	border-radius:3px;
-	line-height: 140px;
-	padding: 5px;
-	color: #434343;
-	background: #f6ffed;
-}</string>
-         </property>
+        <widget class="QLabel" name="lab_about">
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;已经准备好，可以开始了！&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>Clean My Wechat · 安全释放微信占用空间</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
@@ -127,128 +133,71 @@
         </widget>
        </item>
        <item>
-        <spacer name="verticalSpacer_4">
+        <spacer name="topSpacer">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
            <width>20</width>
-           <height>40</height>
+           <height>10</height>
           </size>
          </property>
         </spacer>
        </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_7">
-         <item>
-          <spacer name="horizontalSpacer_13">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QLabel" name="lab_logo">
-           <property name="minimumSize">
-            <size>
-             <width>200</width>
-             <height>200</height>
-            </size>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QLabel {
-	image: url(:/icon/wechat.png);
-}</string>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_14">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <spacer name="verticalSpacer_5">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
+       <item alignment="Qt::AlignHCenter">
+        <widget class="QLabel" name="lab_logo">
+         <property name="minimumSize">
           <size>
-           <width>20</width>
-           <height>40</height>
+           <width>184</width>
+           <height>184</height>
           </size>
          </property>
-        </spacer>
+         <property name="maximumSize">
+          <size>
+           <width>184</width>
+           <height>184</height>
+          </size>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <item>
-          <spacer name="horizontalSpacer_4">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
+        <widget class="QLabel" name="lab_info">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>76</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>扫描微信缓存、日志和旧文件，清理前会再次确认。</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="progressLayout">
+         <property name="leftMargin">
+          <number>18</number>
+         </property>
+         <property name="rightMargin">
+          <number>18</number>
+         </property>
          <item>
           <widget class="QProgressBar" name="bar_progress">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
+           <property name="minimumSize">
             <size>
-             <width>16777215</width>
-             <height>16777215</height>
+             <width>0</width>
+             <height>26</height>
             </size>
-           </property>
-           <property name="layoutDirection">
-            <enum>Qt::LeftToRight</enum>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QProgressBar {
-    background: #fff;
-	border:1px solid #d9d9d9;
-	border-radius: 13px;
-	color: black;
-}
-QProgressBar::chunk {
-	background-color: #1890ff;
-	border-radius:12px;
-}</string>
            </property>
            <property name="value">
             <number>0</number>
@@ -256,28 +205,65 @@ QProgressBar::chunk {
            <property name="alignment">
             <set>Qt::AlignCenter</set>
            </property>
-           <property name="textVisible">
-            <bool>true</bool>
-           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="actionSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>12</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="actionLayout">
+         <property name="spacing">
+          <number>12</number>
+         </property>
+         <item>
+          <spacer name="actionLeft">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
-           <property name="invertedAppearance">
-            <bool>false</bool>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="lab_clean">
+           <property name="minimumSize">
+            <size>
+             <width>188</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>扫描并清理</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
            </property>
           </widget>
          </item>
          <item>
-          <spacer name="horizontalSpacer_3">
+          <spacer name="actionRight">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
-           </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>40</width>
+             <width>20</width>
              <height>20</height>
             </size>
            </property>
@@ -286,82 +272,33 @@ QProgressBar::chunk {
         </layout>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <layout class="QHBoxLayout" name="secondaryLayout">
          <property name="spacing">
-          <number>0</number>
+          <number>10</number>
          </property>
          <item>
-          <spacer name="horizontalSpacer_5">
+          <spacer name="secondaryLeft">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
-           </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>100</width>
+             <width>20</width>
              <height>20</height>
             </size>
            </property>
           </spacer>
          </item>
          <item>
-          <widget class="QLabel" name="lab_clean">
-           <property name="styleSheet">
-            <string notr="true">.QLabel {
-    color: rgba(0,0,0,.65);
-    background-color: #fff;
-    border: 1px solid #d9d9d9;
-	border-right: 0px; 
-	height: 24px;
-	font-size: 14px;
-	padding: 0px 10px;
-}
-.QLabel:hover {
-    color: #40a9ff;
-    background-color: #fff;
-    border: 1px solid #40a9ff;
-	height: 24px;
-	font-size: 14px
-}</string>
-           </property>
-           <property name="text">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;开始&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item>
           <widget class="QLabel" name="lab_config">
            <property name="minimumSize">
             <size>
-             <width>0</width>
-             <height>35</height>
+             <width>84</width>
+             <height>36</height>
             </size>
            </property>
-           <property name="styleSheet">
-            <string notr="true">.QLabel {
-    color: rgba(0,0,0,.65);
-    background-color: #fff;
-    border: 1px solid #d9d9d9;
-	border-right: 0px; 
-	height: 24px;
-	font-size: 14px;
-	padding: 0px 10px;
-}
-.QLabel:hover {
-    color: #40a9ff;
-    background-color: #fff;
-    border: 1px solid #40a9ff;
-	height: 24px;
-	font-size: 14px
-}</string>
-           </property>
            <property name="text">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;设置&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>设置</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -372,30 +309,12 @@ QProgressBar::chunk {
           <widget class="QLabel" name="lab_close">
            <property name="minimumSize">
             <size>
-             <width>0</width>
-             <height>30</height>
+             <width>84</width>
+             <height>36</height>
             </size>
            </property>
-           <property name="styleSheet">
-            <string notr="true">.QLabel {
-    color: rgba(0,0,0,.65);
-    background-color: #fff;
-    border: 1px solid #d9d9d9;
-	height: 24px;
-	font-size: 14px;
-	padding: 0px 10px;
-}
-
-.QLabel:hover {
-    color: #40a9ff;
-    background-color: #fff;
-    border: 1px solid #40a9ff;
-	height: 24px;
-	font-size: 14px
-}</string>
-           </property>
            <property name="text">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;退出&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>退出</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -403,50 +322,19 @@ QProgressBar::chunk {
           </widget>
          </item>
          <item>
-          <spacer name="horizontalSpacer_9">
+          <spacer name="secondaryRight">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
-           </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>100</width>
+             <width>20</width>
              <height>20</height>
             </size>
            </property>
           </spacer>
          </item>
         </layout>
-       </item>
-       <item>
-        <spacer name="verticalSpacer_3">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item>
-        <widget class="QLabel" name="lab_about">
-         <property name="styleSheet">
-          <string notr="true">.QLabel {
-	color: #434343;
-}</string>
-         </property>
-         <property name="text">
-          <string>Clean My Wechat V2.1 - 清除微信无用数据</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
        </item>
       </layout>
      </widget>

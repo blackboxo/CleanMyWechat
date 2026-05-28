@@ -6,84 +6,140 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>650</width>
-    <height>416</height>
+    <width>680</width>
+    <height>560</height>
    </rect>
   </property>
-  <property name="windowTitle">
-   <string>Config</string>
+  <property name="minimumSize">
+   <size>
+    <width>680</width>
+    <height>560</height>
+   </size>
   </property>
-  <property name="layoutDirection">
-   <enum>Qt::LeftToRight</enum>
+  <property name="windowTitle">
+   <string>清理设置</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">* {
+    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+    color: #21352b;
+}
+QWidget#centralwidget {
+    background-color: #edf7f1;
+}
+QFrame#mainFrame {
+    background-color: #f8fbf7;
+    border: 1px solid #dcebe1;
+    border-radius: 18px;
+}
+QLabel#lab_info {
+    color: #395246;
+    background-color: #e8f6ed;
+    border: 1px solid #c8e8d2;
+    border-radius: 14px;
+    padding: 10px 18px;
+    font-size: 14px;
+}
+QLabel#label {
+    color: #6a7d72;
+    font-size: 13px;
+}
+QLabel#label_scope, QLabel#label_days, QLabel#label_3 {
+    color: #486256;
+    font-size: 14px;
+}
+QComboBox, QLineEdit {
+    background-color: #f1f7f3;
+    border: 1px solid #d3e4d8;
+    border-radius: 12px;
+    min-height: 34px;
+    padding: 4px 12px;
+    font-size: 14px;
+}
+QComboBox:hover, QLineEdit:hover {
+    border-color: #b9dfc5;
+}
+QComboBox::drop-down {
+    width: 24px;
+    border: 0;
+}
+QComboBox::down-arrow {
+    image: url(:/icon/arrow-down.png);
+}
+QCheckBox {
+    color: #31483d;
+    font-size: 14px;
+    spacing: 8px;
+}
+QCheckBox::indicator::unchecked {
+    image: url(:/icon/复选.svg);
+}
+QCheckBox::indicator::checked {
+    image: url(:/icon/复选1.svg);
+}
+QPushButton {
+    min-height: 38px;
+    padding: 0 18px;
+    border-radius: 19px;
+    font-size: 14px;
+}
+QPushButton#btn_file {
+    color: #486256;
+    background-color: #f1f7f3;
+    border: 1px solid #d3e4d8;
+}
+QPushButton#btn_file:hover {
+    color: #159452;
+    background-color: #e8f6ed;
+    border-color: #b9dfc5;
+}
+QPushButton#btn_close {
+    color: #f8fbf7;
+    background-color: #16a85a;
+    border: 1px solid #149550;
+    font-weight: 600;
+}
+QPushButton#btn_close:hover {
+    background-color: #20b966;
+    border-color: #18a75a;
+}</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="1">
-     <spacer name="horizontalSpacer">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="1" column="0">
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="1" column="1">
+    <property name="leftMargin">
+     <number>28</number>
+    </property>
+    <property name="topMargin">
+     <number>28</number>
+    </property>
+    <property name="rightMargin">
+     <number>28</number>
+    </property>
+    <property name="bottomMargin">
+     <number>28</number>
+    </property>
+    <item row="0" column="0">
      <widget class="QFrame" name="mainFrame">
-      <property name="styleSheet">
-       <string notr="true">.QFrame {
-	background: rgb(245, 245, 245);
-	border-radius: 3px;
-}</string>
-      </property>
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
-      </property>
       <layout class="QVBoxLayout" name="verticalLayout">
+       <property name="spacing">
+        <number>18</number>
+       </property>
+       <property name="leftMargin">
+        <number>34</number>
+       </property>
+       <property name="topMargin">
+        <number>28</number>
+       </property>
+       <property name="rightMargin">
+        <number>34</number>
+       </property>
+       <property name="bottomMargin">
+        <number>24</number>
+       </property>
        <item>
-        <widget class="QLabel" name="lab_info">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>40</height>
-          </size>
-         </property>
-         <property name="font">
-          <font>
-           <family>微软雅黑</family>
-          </font>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">.QLabel {
-	border:1px solid #b7eb8f;
-	border-radius:3px;
-	line-height: 140px;
-	padding: 5px;
-	color: #434343;
-	background: #f6ffed;
-}</string>
-         </property>
+        <widget class="QLabel" name="label">
          <property name="text">
-          <string>一切都准备好！</string>
+          <string>Clean My Wechat · 清理设置</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
@@ -91,500 +147,128 @@
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <widget class="QLabel" name="lab_info">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>64</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>推荐使用默认选项。收到的文档默认不清理，文件会先进入回收站。</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="accountLayout">
          <property name="spacing">
-          <number>5</number>
+          <number>12</number>
          </property>
-         <property name="sizeConstraint">
-          <enum>QLayout::SetDefaultConstraint</enum>
-         </property>
+         <item>
+          <widget class="QLabel" name="accountLabel">
+           <property name="minimumSize">
+            <size>
+             <width>92</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>微信账号</string>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QComboBox" name="combo_user">
            <property name="minimumSize">
             <size>
-             <width>70</width>
-             <height>35</height>
+             <width>260</width>
+             <height>36</height>
             </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QComboBox {
-	border:1px solid #d9d9d9;
-	border-radius:3px;
-	line-height: 140px;
-	padding:5px 20px;
-	color: #434343;
-}
-.QComboBox::drop-down {
-	width: 20px;
-    border-left: 1px solid #d9d9d9;
-}
-.QComboBox::down-arrow {
-    image: url(:/icon/arrow-down.png)
-}</string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="btn_file">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
            <property name="minimumSize">
             <size>
-             <width>0</width>
-             <height>35</height>
+             <width>128</width>
+             <height>38</height>
             </size>
            </property>
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-             <pointsize>-1</pointsize>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QPushButton {
-	height: 24px;
-    padding: 0px 10px;
-    font-size: 14px;
-    border-radius: 3px;
-    color: rgba(0,0,0,.65);
-    background-color: #fff;
-    border: 1px solid #d9d9d9;
-}
-
-.QPushButton:hover {
-	height: 24px;
-    padding: 0px 10px;
-    font-size: 14px;
-    border-radius: 3px;
-    color: #40a9ff;
-    background-color: #fff;
-    border: 1px solid #40a9ff;
-}
-</string>
-           </property>
            <property name="text">
-            <string>+自定义路径</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btn_close">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>35</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-             <pointsize>-1</pointsize>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QPushButton {
-	height: 24px;
-    padding: 0px 10px;
-    font-size: 14px;
-    border-radius: 3px;
-    color: rgba(0,0,0,.65);
-    background-color: #fff;
-    border: 1px solid #d9d9d9;
-}
-
-.QPushButton:hover {
-	height: 24px;
-    padding: 0px 10px;
-    font-size: 14px;
-    border-radius: 3px;
-    color: #40a9ff;
-    background-color: #fff;
-    border: 1px solid #40a9ff;
-}
-</string>
-           </property>
-           <property name="text">
-            <string>保存</string>
+            <string>重新选择目录</string>
            </property>
           </widget>
          </item>
         </layout>
        </item>
        <item>
-        <spacer name="verticalSpacer_3">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
+        <widget class="QCheckBox" name="check_is_clean">
+         <property name="text">
+          <string>启用这个账号的清理</string>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_scope">
+         <property name="text">
+          <string>清理范围</string>
          </property>
-        </spacer>
+        </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_8">
-         <item>
-          <spacer name="horizontalSpacer_15">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Maximum</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>80</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="check_is_clean">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>0</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-             <weight>50</weight>
-             <bold>false</bold>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QCheckBox::indicator::unchecked {   
-    image: url(:/icon/复选.svg);
-}
-
-QCheckBox::indicator::checked { 
-    image: url(:/icon/复选1.svg);
-}</string>
-           </property>
+        <layout class="QGridLayout" name="scopeLayout">
+         <property name="horizontalSpacing">
+          <number>18</number>
+         </property>
+         <property name="verticalSpacing">
+          <number>12</number>
+         </property>
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="check_picscache">
            <property name="text">
-            <string>是否对该账号进行下列内容的清理</string>
+            <string>图片缓存、小程序和公众号缓存</string>
            </property>
           </widget>
          </item>
-         <item>
-          <spacer name="horizontalSpacer_16">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-
-        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_100">
-         <item>
-          <spacer name="horizontalSpacer_100">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Maximum</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>80</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="font">
-            <font>
-             <family>Microsoft YaHei</family>
-            </font>
-           </property>
-           <property name="text">
-            <string>请勾选你要清理的文件格式：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-        </item>
-       
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_7">
-         <item>
-          <spacer name="horizontalSpacer_13">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Maximum</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>80</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
+         <item row="0" column="1">
           <widget class="QCheckBox" name="check_picdown">
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-             <weight>50</weight>
-             <bold>false</bold>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QCheckBox::indicator::unchecked {   
-    image: url(:/icon/复选.svg);
-}
-
-QCheckBox::indicator::checked { 
-    image: url(:/icon/复选1.svg);
-}</string>
-           </property>
            <property name="text">
             <string>图片</string>
            </property>
           </widget>
          </item>
-         <item>
-          <spacer name="horizontalSpacer_14">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_6">
-         <item>
-          <spacer name="horizontalSpacer_7">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Maximum</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>80</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="check_files">
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QCheckBox::indicator::unchecked {   
-    image: url(:/icon/复选.svg);
-}
-
-QCheckBox::indicator::checked { 
-    image: url(:/icon/复选1.svg);
-}</string>
-           </property>
-           <property name="text">
-            <string>接收的文件（PPT、Doc 等）</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_11">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_5">
-         <item>
-          <spacer name="horizontalSpacer_8">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Maximum</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>80</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
+         <item row="1" column="0">
           <widget class="QCheckBox" name="check_video">
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QCheckBox::indicator::unchecked {   
-    image: url(:/icon/复选.svg);
-}
-
-QCheckBox::indicator::checked { 
-    image: url(:/icon/复选1.svg);
-}</string>
-           </property>
            <property name="text">
-            <string>视频（视频文件和视频的封面图）</string>
+            <string>视频</string>
            </property>
           </widget>
          </item>
-         <item>
-          <spacer name="horizontalSpacer_12">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+         <item row="1" column="1">
+          <widget class="QCheckBox" name="check_files">
+           <property name="text">
+            <string>收到的文档（默认不清理）</string>
            </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
+          </widget>
          </item>
         </layout>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <layout class="QHBoxLayout" name="daysLayout">
+         <property name="spacing">
+          <number>10</number>
+         </property>
          <item>
-          <spacer name="horizontalSpacer_6">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Maximum</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>80</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="check_picscache">
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">QCheckBox::indicator::unchecked {   
-    image: url(:/icon/复选.svg);
-}
-
-QCheckBox::indicator::checked { 
-    image: url(:/icon/复选1.svg);
-}</string>
-           </property>
+          <widget class="QLabel" name="label_days">
            <property name="text">
-            <string>图片缓存（来自小程序、公众号等）</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_10">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0,0">
-         <item>
-          <spacer name="horizontalSpacer_3">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Maximum</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>80</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="font">
-            <font>
-             <family>Microsoft YaHei</family>
-            </font>
-           </property>
-           <property name="text">
-            <string>需要保留多久以内的文件：</string>
+            <string>保留时间</string>
            </property>
           </widget>
          </item>
@@ -592,66 +276,36 @@ QCheckBox::indicator::checked {
           <widget class="QLineEdit" name="line_gobackdays">
            <property name="minimumSize">
             <size>
-             <width>70</width>
-             <height>35</height>
+             <width>80</width>
+             <height>36</height>
             </size>
            </property>
            <property name="maximumSize">
             <size>
-             <width>60</width>
+             <width>96</width>
              <height>16777215</height>
             </size>
            </property>
-           <property name="font">
-            <font>
-             <family>微软雅黑</family>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">.QLineEdit {
-	border:1px solid #d9d9d9;
-	border-radius:3px;
-	line-height: 140px;
-	padding: 5px;
-	color: #434343;
-}
-
-.QLineEdit:hover {
-	border:1px solid #40a9ff;
-	border-radius:3px;
-	line-height: 140px;
-	padding: 5px;
-	color: #434343;
-}</string>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
            <property name="placeholderText">
-            <string>天数</string>
+            <string>365</string>
            </property>
           </widget>
          </item>
          <item>
           <widget class="QLabel" name="label_3">
-           <property name="font">
-            <font>
-             <family>Microsoft YaHei</family>
-            </font>
-           </property>
            <property name="text">
-            <string>天</string>
+            <string>天以内不清理</string>
            </property>
           </widget>
          </item>
          <item>
-          <spacer name="horizontalSpacer_4">
+          <spacer name="daysSpacer">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>40</width>
+             <width>20</width>
              <height>20</height>
             </size>
            </property>
@@ -660,66 +314,50 @@ QCheckBox::indicator::checked {
         </layout>
        </item>
        <item>
-        <spacer name="verticalSpacer_4">
+        <spacer name="bottomSpacer">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
            <width>20</width>
-           <height>40</height>
+           <height>18</height>
           </size>
          </property>
         </spacer>
        </item>
        <item>
-        <widget class="QLabel" name="label">
-         <property name="font">
-          <font>
-           <family>微软雅黑</family>
-          </font>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">.QLabel {
-	color: #434343;
-}</string>
-         </property>
-         <property name="text">
-          <string>Clean My Wechat V2.1 - 设置页面</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="footerLayout">
+         <item>
+          <spacer name="footerSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btn_close">
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>保存设置</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>
-    </item>
-    <item row="1" column="2">
-     <spacer name="verticalSpacer_2">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="2" column="1">
-     <spacer name="horizontalSpacer_2">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
     </item>
    </layout>
   </widget>

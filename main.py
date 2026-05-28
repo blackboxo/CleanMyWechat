@@ -407,12 +407,13 @@ class Window(QMainWindow):
     def setWarninginfo(self, text):
         self.lab_info.setStyleSheet("""
             .QLabel {
-                border:1px solid #ffccc7;
-                border-radius:3px;
-                line-height: 140px;
-                padding: 5px;
-                color: #434343;
-                background: #fff2f0;
+                color: #614a22;
+                background-color: #fff4df;
+                border: 1px solid #f0d39a;
+                border-radius: 14px;
+                padding: 10px 18px;
+                font-size: 14px;
+                line-height: 150%;
             }
             """)
         self.lab_info.setWordWrap(True)  # 启用自动换行
@@ -421,12 +422,13 @@ class Window(QMainWindow):
     def setSuccessinfo(self, text):
         self.lab_info.setStyleSheet("""
             .QLabel {
-                border:1px solid #b7eb8f;
-                border-radius:3px;
-                line-height: 140px;
-                padding: 5px;
-                color: #434343;
-                background: #f6ffed;
+                color: #395246;
+                background-color: #e8f6ed;
+                border: 1px solid #c8e8d2;
+                border-radius: 14px;
+                padding: 10px 18px;
+                font-size: 14px;
+                line-height: 150%;
             }
             """)
         self.lab_info.setWordWrap(True)  # 启用自动换行
@@ -444,8 +446,9 @@ class ConfigWindow(Window):
         self.btn_file.clicked.connect(self.open_file)
 
     def simplify_config_ui(self):
+        self.setMinimumSize(680, 560)
         self.btn_file.setText("重新选择目录")
-        self.btn_close.setText("保存")
+        self.btn_close.setText("保存设置")
         self.check_is_clean.setText("启用这个账号的清理")
         self.check_picdown.setText("图片")
         self.check_files.setText("收到的文档（默认不清理）")
@@ -592,6 +595,12 @@ class MainWindow(Window):
             self.setSuccessinfo("已经准备好，可以开始了！")
             self.config_exists = True
 
+    def keep_ui_responsive(self):
+        self.scan_tick = getattr(self, "scan_tick", 0) + 1
+        if self.scan_tick % 250 == 0:
+            self.bar_progress.setRange(0, 0)
+            QApplication.processEvents()
+
     def closeEvent(self, event):
         if hasattr(self, 'scan_thread') and self.scan_thread.isRunning():
             self.scan_thread.stop()
@@ -640,7 +649,7 @@ class MainWindow(Window):
             self.lab_execute_delete.installEventFilter(self)
 
     def simplify_home_ui(self):
-        self.setMinimumSize(520, 560)
+        self.setMinimumSize(560, 620)
         self.centralwidget.setStyleSheet("""
             QWidget#centralwidget {
                 background-color: #eef7f1;
@@ -972,6 +981,7 @@ class MainWindow(Window):
                 for filename in files:
                     file_path = os.path.join(root, filename)
                     self.add_file_if_match(file_path, now, day, category, file_list, file_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts)
+                    self.keep_ui_responsive()
                 # 只记录真正的空旧目录，不整月粗暴删除，避免把白名单文件夹一起送进回收站。
                 for dirname in list(dirs):
                     dir_path = os.path.join(root, dirname)
@@ -1225,6 +1235,7 @@ class MainWindow(Window):
         return msg.exec_() == QMessageBox.Yes
 
     def callback(self, v):
+        self.bar_progress.setRange(0, 100)
         total = int((self.total_file + self.total_dir))
         if total <= 0:
             self.bar_progress.setValue(0)
@@ -1266,6 +1277,10 @@ class MainWindow(Window):
         apply_startup_setting(self.config)
         need_clean = False
         self.thread_list = []
+        self.scan_tick = 0
+        self.bar_progress.setRange(0, 0)
+        self.setSuccessinfo("正在扫描微信文件，请稍候...")
+        QApplication.processEvents()
         total_file = 0
         total_dir = 0
         total_stats = self.make_empty_stats()
@@ -1309,11 +1324,15 @@ class MainWindow(Window):
                 self.thread_list.append(thread)
 
         if not need_clean:
+            self.bar_progress.setRange(0, 100)
+            self.bar_progress.setValue(0)
             self.setWarninginfo("没有需要清理的文件")
         else:
             self.total_file = total_file
             self.total_dir = total_dir
             self.total_size = total_stats.get("total_size", 0)
+            self.bar_progress.setRange(0, 100)
+            self.bar_progress.setValue(0)
             if not auto_mode or self.config.get("global", {}).get("auto_clean_confirm", True):
                 if not self.show_preview_dialog(total_stats, detail_lines):
                     self.setWarninginfo("已取消清理，未移动任何文件。")
