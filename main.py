@@ -568,7 +568,7 @@ class ConfigWindow(Window):
         self._loading_config = False
         self.check_is_clean.setText("启用这个账号的清理")
         if self.config.get("global", {}).get("direct_delete", False):
-            self.setSuccessinfo("当前已开启直接删除。清理前会再次确认，删除后无法从回收站恢复。")
+            self.setSuccessinfo("当前已开启直接删除。清理前会再次确认。")
         else:
             self.setSuccessinfo("推荐使用默认选项。文件会先进入回收站，清理前会再次确认。")
 
@@ -1639,7 +1639,7 @@ class MainWindow(Window):
         self.bar_progress.setValue(int(value))
         if value >= 100:
             direct_delete = self.config.get("global", {}).get("direct_delete", False)
-            final_tip = "文件已直接删除，无法从回收站恢复。" if direct_delete else "请前往回收站检查并清空。"
+            final_tip = "文件已直接删除。" if direct_delete else "请前往回收站检查并清空。"
             out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(
                 self.total_dir) + "个，预计释放空间" + format_size(getattr(self, 'total_size', 0)) + "。\n" + final_tip
             self.setSuccessinfo(out)
