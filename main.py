@@ -530,38 +530,74 @@ class ConfigWindow(Window):
     def load_config(self):
         self.config = load_config_file()
 
+        self._loading_config = True
+        self.combo_user.blockSignals(True)
         self.combo_user.clear()
         for value in self.config["users"]:
             self.combo_user.addItem(value["wechat_id"])
+        self.combo_user.blockSignals(False)
 
         if not self.config["users"]:
+            self._loading_config = False
             self.setWarninginfo("没有检测到微信账号，请手动选择 WeChat Files 文件夹。")
             return
 
-        self.line_gobackdays.setText(
-            str(self.config["users"][0]["clean_days"]))
-        self.check_is_clean.setChecked(self.config["users"][0]["is_clean"])
-        self.check_picdown.setChecked(self.config["users"][0]["clean_pic"])
-        self.check_files.setChecked(self.config["users"][0]["clean_file"])
-        self.check_video.setChecked(self.config["users"][0]["clean_video"])
-        self.check_picscache.setChecked(
-            self.config["users"][0]["clean_pic_cache"])
+        self.apply_user_config_to_ui(self.config["users"][0])
+        self.current_account_id = self.config["users"][0]["wechat_id"]
+        self._loading_config = False
         self.check_is_clean.setText("启用这个账号的清理")
         self.setSuccessinfo("推荐使用默认选项。文件会先进入回收站，清理前会再次确认。")
 
         self.simplify_config_ui()
 
+    def apply_user_config_to_ui(self, user_config):
+        self.line_gobackdays.setText(str(user_config.get("clean_days", 365)))
+        self.check_is_clean.setChecked(user_config.get("is_clean", True))
+        self.check_picdown.setChecked(user_config.get("clean_pic", True))
+        self.check_files.setChecked(user_config.get("clean_file", False))
+        self.check_video.setChecked(user_config.get("clean_video", True))
+        self.check_picscache.setChecked(user_config.get("clean_pic_cache", True))
+
     def refresh_ui(self):
+        if getattr(self, "_loading_config", False):
+            return
+        previous_account_id = getattr(self, "current_account_id", "")
+        current_account_id = self.combo_user.currentText()
+        if previous_account_id and previous_account_id != current_account_id:
+            self.persist_current_config(previous_account_id)
+
         self.config = load_config_file()
 
         for value in self.config["users"]:
-            if value["wechat_id"] == self.combo_user.currentText():
-                self.line_gobackdays.setText(str(value["clean_days"]))
-                self.check_is_clean.setChecked(value["is_clean"])
-                self.check_picdown.setChecked(value["clean_pic"])
-                self.check_files.setChecked(value["clean_file"])
-                self.check_video.setChecked(value["clean_video"])
-                self.check_picscache.setChecked(value["clean_pic_cache"])
+            if value["wechat_id"] == current_account_id:
+                self.apply_user_config_to_ui(value)
+                self.current_account_id = current_account_id
+                return
+
+    def persist_current_config(self, account_id=None, notify=False, emit_signal=False):
+        if not len(self.config):
+            return False
+        self.config = ensure_config_defaults(self.config)
+        target_account_id = account_id or self.combo_user.currentText()
+        for value in self.config["users"]:
+            if value["wechat_id"] == target_account_id:
+                try:
+                    days = int(self.line_gobackdays.text())
+                    value["clean_days"] = str(max(days, 0))
+                except ValueError:
+                    value["clean_days"] = "0"
+                value["is_clean"] = self.check_is_clean.isChecked()
+                value["clean_pic"] = self.check_picdown.isChecked()
+                value["clean_file"] = self.check_files.isChecked()
+                value["clean_video"] = self.check_video.isChecked()
+                value["clean_pic_cache"] = self.check_picscache.isChecked()
+                save_json(CONFIG_PATH, self.config)
+                if notify:
+                    self.setSuccessinfo("更新配置文件成功")
+                if emit_signal:
+                    self.Signal_OneParameter.emit(1)
+                return True
+        return False
 
     def create_config(self):
         if not os.path.exists(CONFIG_PATH):
@@ -581,29 +617,7 @@ class ConfigWindow(Window):
             self.load_config()
 
     def update_config(self):
-        if not len(self.config):
-            return
-        else:
-            self.config = ensure_config_defaults(self.config)
-            for value in self.config["users"]:
-                if value["wechat_id"] == self.combo_user.currentText():
-                    try:
-                        days = int(self.line_gobackdays.text())
-                        if days < 0:
-                            value["clean_days"] = "0"
-                        else:
-                            value["clean_days"] = self.line_gobackdays.text()
-                    except ValueError:
-                        value["clean_days"] = "0"
-                    value["is_clean"] = self.check_is_clean.isChecked()
-                    value["clean_pic"] = self.check_picdown.isChecked()
-                    value["clean_file"] = self.check_files.isChecked()
-                    value["clean_video"] = self.check_video.isChecked()
-                    value["clean_pic_cache"] = self.check_picscache.isChecked()
-
-            save_json(CONFIG_PATH, self.config)
-            self.setSuccessinfo("更新配置文件成功")
-            self.Signal_OneParameter.emit(1)
+        self.persist_current_config(notify=True, emit_signal=True)
 
     def __init__(self):
         super().__init__()
