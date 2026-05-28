@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 
 from PyQt5.QtCore import QMutex, QThread, pyqtSignal
 from send2trash import send2trash
@@ -23,20 +24,27 @@ class multiDeleteThread(QThread):
     delete_process_signal = pyqtSignal(int)
     delete_complete_signal = pyqtSignal()
 
-    def __init__(self, fileList, dirList, share_thread_arr):
+    def __init__(self, fileList, dirList, share_thread_arr, direct_delete=False):
         super(multiDeleteThread, self).__init__()
         self.fileList = fileList
         self.dirList = dirList
         self.share_thread_arr = share_thread_arr
+        self.direct_delete = direct_delete
 
-    def _send_to_trash(self, file_path):
+    def _delete_path(self, file_path):
         if is_protected_file(file_path):
             logging.info("Skip protected file: %s", file_path)
             return
         try:
-            send2trash(file_path)
+            if self.direct_delete:
+                if os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+                else:
+                    os.remove(file_path)
+            else:
+                send2trash(file_path)
         except Exception:
-            logging.exception("Failed to move to recycle bin: %s", file_path)
+            logging.exception("Failed to delete path: %s", file_path)
 
     def _emit_progress(self):
         qmut.lock()
@@ -49,11 +57,11 @@ class multiDeleteThread(QThread):
     def run(self):
         try:
             for file_path in self.fileList:
-                self._send_to_trash(file_path)
+                self._delete_path(file_path)
                 self._emit_progress()
 
             for file_path in self.dirList:
-                self._send_to_trash(file_path)
+                self._delete_path(file_path)
                 self._emit_progress()
 
             logging.info("Delete thread finished")

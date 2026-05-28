@@ -85,6 +85,7 @@ DEFAULT_GLOBAL_CONFIG = {
     "auto_clean_confirm": True,
     "run_at_startup": False,
     "startup_clean_cache_only": True,
+    "direct_delete": False,
     "scan_system_cache": True,
     "scan_wechat4_cache": True,
     "scan_mini_program_cache": True,
@@ -458,7 +459,7 @@ class ConfigWindow(Window):
             self.btn_open_account.clicked.connect(self.open_current_account_dir)
 
     def simplify_config_ui(self):
-        self.setMinimumSize(760, 560)
+        self.setMinimumSize(760, 650)
         self.btn_file.setText("重新选择目录")
         if hasattr(self, "btn_open_account"):
             self.btn_open_account.setText("打开文件夹")
@@ -468,6 +469,12 @@ class ConfigWindow(Window):
         self.check_files.setText("收到的文档")
         self.check_video.setText("视频")
         self.check_picscache.setText("图片缓存、小程序和公众号缓存")
+        if hasattr(self, "check_direct_delete"):
+            self.check_direct_delete.setText("直接删除，不移动到回收站")
+        if hasattr(self, "check_run_at_startup"):
+            self.check_run_at_startup.setText("开机自启动")
+        if hasattr(self, "check_auto_clean"):
+            self.check_auto_clean.setText("定期自动清理")
 
     def open_current_account_dir(self):
         self.config = load_config_file()
@@ -544,6 +551,7 @@ class ConfigWindow(Window):
             return
 
         self.apply_user_config_to_ui(self.config["users"][0])
+        self.apply_global_config_to_ui(self.config.get("global", {}))
         self.current_account_id = self.config["users"][0]["wechat_id"]
         self._loading_config = False
         self.check_is_clean.setText("启用这个账号的清理")
@@ -558,6 +566,16 @@ class ConfigWindow(Window):
         self.check_files.setChecked(user_config.get("clean_file", False))
         self.check_video.setChecked(user_config.get("clean_video", True))
         self.check_picscache.setChecked(user_config.get("clean_pic_cache", True))
+
+    def apply_global_config_to_ui(self, global_config):
+        if hasattr(self, "check_direct_delete"):
+            self.check_direct_delete.setChecked(global_config.get("direct_delete", False))
+        if hasattr(self, "check_run_at_startup"):
+            self.check_run_at_startup.setChecked(global_config.get("run_at_startup", False))
+        if hasattr(self, "check_auto_clean"):
+            self.check_auto_clean.setChecked(global_config.get("auto_clean_enable", False))
+        if hasattr(self, "line_auto_days"):
+            self.line_auto_days.setText(str(global_config.get("auto_clean_interval_days", 30)))
 
     def refresh_ui(self):
         if getattr(self, "_loading_config", False):
@@ -579,6 +597,19 @@ class ConfigWindow(Window):
         if not len(self.config):
             return False
         self.config = ensure_config_defaults(self.config)
+        global_config = self.config.setdefault("global", {})
+        if hasattr(self, "check_direct_delete"):
+            global_config["direct_delete"] = self.check_direct_delete.isChecked()
+        if hasattr(self, "check_run_at_startup"):
+            global_config["run_at_startup"] = self.check_run_at_startup.isChecked()
+        if hasattr(self, "check_auto_clean"):
+            global_config["auto_clean_enable"] = self.check_auto_clean.isChecked()
+        if hasattr(self, "line_auto_days"):
+            try:
+                interval_days = int(self.line_auto_days.text())
+                global_config["auto_clean_interval_days"] = str(max(interval_days, 1))
+            except ValueError:
+                global_config["auto_clean_interval_days"] = "30"
         target_account_id = account_id or self.combo_user.currentText()
         for value in self.config["users"]:
             if value["wechat_id"] == target_account_id:
@@ -593,6 +624,7 @@ class ConfigWindow(Window):
                 value["clean_video"] = self.check_video.isChecked()
                 value["clean_pic_cache"] = self.check_picscache.isChecked()
                 save_json(CONFIG_PATH, self.config)
+                apply_startup_setting(self.config)
                 if notify:
                     self.setSuccessinfo("更新配置文件成功")
                 if emit_signal:
@@ -899,7 +931,8 @@ class MainWindow(Window):
         self.total_size = 0
 
         share_thread_arr = [0]
-        thread = multiDeleteThread(selected_files, selected_dirs, share_thread_arr)
+        direct_delete = load_config_file().get("global", {}).get("direct_delete", False)
+        thread = multiDeleteThread(selected_files, selected_dirs, share_thread_arr, direct_delete=direct_delete)
         thread.delete_process_signal.connect(self.callback)
         self.thread_list.append(thread)
         thread.start()
@@ -1006,6 +1039,42 @@ class MainWindow(Window):
         except Exception:
             logging.exception("扫描文件失败：%s", file_path)
 
+    def is_expired_month_dir(self, dirname, now, day):
+        match = re.match(r'^(?P<year>\d{4})-(?P<month>\d{2})$', dirname)
+        if not match:
+            return False
+        try:
+            year = int(match.group("year"))
+            month = int(match.group("month"))
+            if month < 1 or month > 12:
+                return False
+            if month == 12:
+                next_month = datetime.datetime(year + 1, 1, 1)
+            else:
+                next_month = datetime.datetime(year, month + 1, 1)
+            cutoff = now - datetime.timedelta(days=day)
+            return next_month.date() <= cutoff.date()
+        except Exception:
+            return False
+
+    def add_month_dir_if_expired(self, dir_path, dirname, now, day, category, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths):
+        if not self.is_expired_month_dir(dirname, now, day):
+            return False
+        if user_config.get("use_whitelist", True):
+            for white_dir in whitelist_paths:
+                if white_dir and is_sub_path(dir_path, white_dir):
+                    return False
+        if dir_path in dir_set:
+            return True
+        dir_set.add(dir_path)
+        dir_list.append(dir_path)
+        stats["total_dirs"] += 1
+        stats["categories"].setdefault(category, {"count": 0, "size": 0})
+        stats["categories"][category]["count"] += 1
+        if len(detail_lines) < 1200:
+            detail_lines.append(f"[旧月份文件夹] {CATEGORY_NAME.get(category, category)}  {dir_path}")
+        return True
+
     def scan_files_recursive(self, root_path, now, day, category, file_list, file_set, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts):
         # 用 os.walk 递归扫描，解决新版微信多层目录扫不到的问题。
         if not root_path or not os.path.exists(root_path):
@@ -1024,6 +1093,13 @@ class MainWindow(Window):
                 if skip_root:
                     dirs[:] = []
                     continue
+                dirs_to_skip = []
+                for dirname in list(dirs):
+                    dir_path = os.path.join(root, dirname)
+                    if self.add_month_dir_if_expired(dir_path, dirname, now, day, category, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths):
+                        dirs_to_skip.append(dirname)
+                if dirs_to_skip:
+                    dirs[:] = [d for d in dirs if d not in dirs_to_skip]
                 for filename in files:
                     file_path = os.path.join(root, filename)
                     self.add_file_if_match(file_path, now, day, category, file_list, file_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts)
@@ -1276,7 +1352,10 @@ class MainWindow(Window):
         if len(lines) == 5:
             lines.append("- 暂无分类数据")
         lines.append("")
-        lines.append("文件会先进入回收站，不会直接永久删除。")
+        if self.config.get("global", {}).get("direct_delete", False):
+            lines.append("当前已开启直接删除，文件不会进入回收站。")
+        else:
+            lines.append("文件会先进入回收站，不会直接永久删除。")
         return "\n".join(lines)
 
     def parse_preview_detail_line(self, line):
@@ -1285,6 +1364,12 @@ class MainWindow(Window):
             return None
         if line.startswith("[空文件夹]"):
             return ("空文件夹", "-", line.replace("[空文件夹]", "", 1).strip())
+        if line.startswith("[旧月份文件夹]"):
+            content = line.replace("[旧月份文件夹]", "", 1).strip()
+            parts = re.split(r'\s{2,}', content, maxsplit=1)
+            if len(parts) == 2:
+                return ("旧月份文件夹", parts[0], parts[1])
+            return ("旧月份文件夹", "-", content)
         match = re.match(r'^\[(?P<category>[^\]]+)\]\s+(?P<size>.+?)\s{2,}(?P<path>.+)$', line)
         if match:
             return (
@@ -1407,7 +1492,11 @@ class MainWindow(Window):
 
         title = QLabel("清理前请确认")
         title.setObjectName("previewTitle")
-        subtitle = QLabel("确认后文件会先进入回收站，不会直接永久删除。")
+        if self.config.get("global", {}).get("direct_delete", False):
+            subtitle_text = "当前已开启直接删除，确认后文件不会进入回收站。"
+        else:
+            subtitle_text = "确认后文件会先进入回收站，不会直接永久删除。"
+        subtitle = QLabel(subtitle_text)
         subtitle.setObjectName("previewSubtitle")
         root_layout.addWidget(title)
         root_layout.addWidget(subtitle)
@@ -1572,7 +1661,8 @@ class MainWindow(Window):
                 total_file += len(file_list)
                 total_dir += len(dir_list)
                 self.merge_stats(total_stats, stats)
-                thread = multiDeleteThread(file_list, dir_list, share_thread_arr)
+                direct_delete = self.config.get("global", {}).get("direct_delete", False)
+                thread = multiDeleteThread(file_list, dir_list, share_thread_arr, direct_delete=direct_delete)
                 thread.delete_process_signal.connect(self.callback)
                 self.thread_list.append(thread)
 

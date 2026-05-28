@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>760</width>
-    <height>560</height>
+    <height>650</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>760</width>
-    <height>560</height>
+    <height>650</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -44,7 +44,7 @@ QLabel#label {
     color: #6a7d72;
     font-size: 13px;
 }
-QLabel#label_scope, QLabel#label_days, QLabel#label_3 {
+QLabel#label_scope, QLabel#label_days, QLabel#label_3, QLabel#label_global, QLabel#label_auto_days {
     color: #486256;
     font-size: 14px;
 }
@@ -345,6 +345,90 @@ QPushButton#btn_close:hover {
             </size>
            </property>
           </spacer>
+         </item>
+       </layout>
+      </item>
+       <item>
+        <widget class="QLabel" name="label_global">
+         <property name="text">
+          <string>安全与自动化</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QGridLayout" name="globalLayout">
+         <property name="horizontalSpacing">
+          <number>18</number>
+         </property>
+         <property name="verticalSpacing">
+          <number>12</number>
+         </property>
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="check_direct_delete">
+           <property name="text">
+            <string>直接删除，不移动到回收站</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QCheckBox" name="check_run_at_startup">
+           <property name="text">
+            <string>开机自启动</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QCheckBox" name="check_auto_clean">
+           <property name="text">
+            <string>定期自动清理</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <layout class="QHBoxLayout" name="autoDaysLayout">
+           <property name="spacing">
+            <number>10</number>
+           </property>
+           <item>
+            <widget class="QLineEdit" name="line_auto_days">
+             <property name="minimumSize">
+              <size>
+               <width>80</width>
+               <height>36</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>96</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="placeholderText">
+              <string>30</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_auto_days">
+             <property name="text">
+              <string>天运行一次</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="autoDaysSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
