@@ -13,7 +13,7 @@
 **现已经支持 Windows 系统中的所有微信版本，包含最新版的微信 4.0 和企业微信。**
 
 [国内地址 - 点击下载](
-https://wwvs.lanzouj.com/is77n0yap4dc)
+https://wwbie.lanzoue.com/iHgXp3ql84ng)
 
 [Github Release - 点击下载](
 https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.zip)
@@ -23,7 +23,7 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.
 2. 自由设置想要删除的文件类型，包括文件、图片、视频；
 3. 自由设置需要删除的文件的距离时间，默认 365 天；
 4. 删除后的文件放置在回收站中，检查后自行清空，防止删错需要的文件；
-5. 支持定期自动更新；
+5. 支持定期自动清理；
 
 ## 运行截图
 
