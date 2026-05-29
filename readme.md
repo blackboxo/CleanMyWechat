@@ -10,7 +10,7 @@
 
 该工具不会删除文字的聊天记录，请放心使用。请给个 **Star** 吧，非常感谢！
 
-**现已经支持 Windows 系统中的所有微信版本，包含最新版的微信 4.0 和企业微信。**
+**现已经支持 Windows 系统中的所有微信版本，包含最新版的微信 4.0+ 和企业微信。**
 
 [国内地址 - 点击下载](
 https://wwbie.lanzoue.com/iHgXp3ql84ng)
@@ -34,15 +34,6 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.
 下载两年时间，微信一个软件就占用多达 33.5 G 存储空间。其中大部分都是与自己无关的各大群聊中的文件、视频、图片等内容，且很久以前的文件仍旧存在电脑中。
 
 ![](images/wechatdisk.png)
-
-## 打包 EXE 方式
-
-```Shell
-pip install -r requirements.txt
-pyinstaller -F -i images/icon.ico -w main.py
-cp -r images dist/
-./dist/main.exe
-```
 
 ## Star History
 
