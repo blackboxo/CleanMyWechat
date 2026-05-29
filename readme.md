@@ -27,9 +27,7 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.
 
 ## 运行截图
 
-![Clean My Wechat 首页](images/README-home.jpg)
-
-![Clean My Wechat 清理设置](images/README-settings.jpg)
+![Clean My Wechat 首页](images/README-merge.png)
 
 ## 微信现状
 
