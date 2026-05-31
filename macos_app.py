@@ -1,9 +1,10 @@
+import json
 import sys
 import traceback
 from datetime import datetime
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QThread, QUrl, pyqtSignal
+from PyQt5.QtCore import Qt, QThread, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import QColor, QDesktopServices
 from PyQt5.QtWidgets import (
     QApplication,
@@ -36,12 +37,13 @@ from utils.macos_wechat import (
     compare_scan_results,
     create_symlink_view,
     default_xwechat_root,
+    execute_cleanup_plan,
     human_size,
     load_scan_history,
     load_scan_result,
     record_scan_history,
     scan_macos_wechat,
-    trash_cleanup_plan,
+    write_launch_agent,
     write_dashboard,
     write_markdown_summary,
     write_scan_outputs,
@@ -120,21 +122,22 @@ class CleanupWorker(QThread):
     finished_ok = pyqtSignal(dict)
     failed = pyqtSignal(str)
 
-    def __init__(self, plan, selected_paths):
+    def __init__(self, plan, selected_paths, direct_delete=False):
         super().__init__()
         self.plan = plan
         self.selected_paths = selected_paths
+        self.direct_delete = direct_delete
 
     def run(self):
         try:
-            result = trash_cleanup_plan(self.plan, self.selected_paths, progress_callback=self.progress.emit)
+            result = execute_cleanup_plan(self.plan, self.selected_paths, progress_callback=self.progress.emit, direct_delete=self.direct_delete)
             self.finished_ok.emit(result)
         except Exception:
             self.failed.emit(traceback.format_exc())
 
 
 class MacOSWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, startup_auto_clean=False, startup_output=None):
         super().__init__()
         self.worker = None
         self.cleanup_worker = None
@@ -143,13 +146,17 @@ class MacOSWindow(QMainWindow):
         self.diff_result = {}
         self.dashboard_path = ""
         self.view_path = ""
-        self.output_path = str(Path.home() / "Documents/CleanMyWechat-macOS")
+        self.output_path = str(Path(startup_output).expanduser()) if startup_output else str(Path.home() / "Documents/CleanMyWechat-macOS")
+        self.startup_auto_clean = startup_auto_clean
         self.setWindowTitle("微信空间检查 Dashboard")
         self.resize(1100, 760)
         self.setMinimumSize(960, 660)
         self.build_ui()
         self.apply_theme()
+        self.load_app_settings()
         self.refresh_history()
+        if self.startup_auto_clean:
+            QTimer.singleShot(300, self.run_startup_auto_clean)
 
     def build_ui(self):
         central = QWidget()
@@ -310,6 +317,12 @@ class MacOSWindow(QMainWindow):
         self.whitelist_paths_edit = QLineEdit("")
         self.whitelist_paths_edit.setPlaceholderText("白名单路径，多个用逗号分隔")
         self.auto_clean_check = QCheckBox("定期自动清理")
+        self.auto_confirm_check = QCheckBox("清理前确认")
+        self.auto_confirm_check.setChecked(True)
+        self.direct_delete_check = QCheckBox("直接删除")
+        self.direct_delete_check.setChecked(False)
+        self.run_at_startup_check = QCheckBox("开机自启动")
+        self.run_at_startup_check.setChecked(False)
         self.auto_days_edit = QLineEdit("30")
         self.auto_days_edit.setMaximumWidth(80)
         settings_layout.addWidget(QLabel("保留天数"), 0, 0)
@@ -326,13 +339,17 @@ class MacOSWindow(QMainWindow):
         settings_layout.addWidget(self.auto_clean_check, 3, 0)
         settings_layout.addWidget(QLabel("清理间隔天数"), 3, 1)
         settings_layout.addWidget(self.auto_days_edit, 3, 2)
-        settings_layout.addWidget(QLabel("按类型 + 保留天数预览，确认后移入回收站。"), 3, 3, 1, 3)
+        settings_layout.addWidget(self.auto_confirm_check, 3, 3)
+        settings_layout.addWidget(self.direct_delete_check, 3, 4)
+        settings_layout.addWidget(self.run_at_startup_check, 4, 0)
+        settings_layout.addWidget(self.make_button("应用自启动", self.apply_startup_setting), 4, 1)
+        settings_layout.addWidget(QLabel("直接删除会跳过回收站；默认关闭。"), 4, 2, 1, 3)
         layout.addWidget(settings)
 
         actions = QHBoxLayout()
         actions.addWidget(self.make_button("全选候选桶", self.select_all_candidates))
         actions.addWidget(self.make_button("生成清理预览", self.preview_cleanup, primary=True))
-        actions.addWidget(self.make_button("移动所选到回收站", self.execute_cleanup))
+        actions.addWidget(self.make_button("清理所选", self.execute_cleanup))
         actions.addStretch(1)
         self.cleanup_label = QLabel("尚未生成清理预览")
         self.cleanup_label.setObjectName("MetricsLabel")
@@ -518,12 +535,14 @@ class MacOSWindow(QMainWindow):
         values = self.validate_inputs()
         if not values:
             return
+        self.save_app_settings()
         self.start_scan(*values, previous_scan=None)
 
     def run_incremental_scan(self):
         values = self.validate_inputs()
         if not values:
             return
+        self.save_app_settings()
         previous = self.scan_result
         if not previous:
             history = load_scan_history(values[1])
@@ -711,6 +730,85 @@ class MacOSWindow(QMainWindow):
                     selected.append(candidates[index])
         return selected
 
+    def app_settings_path(self):
+        return Path(self.output_edit.text()).expanduser() / "reports/macos_app_settings.json"
+
+    def collect_app_settings(self):
+        return {
+            "source": self.source_edit.text().strip(),
+            "output": self.output_edit.text().strip(),
+            "cutoff_month": self.cutoff_edit.text().strip(),
+            "retention_days": self.retention_edit.text().strip(),
+            "clean_images": self.clean_images_check.isChecked(),
+            "clean_videos": self.clean_videos_check.isChecked(),
+            "clean_files": self.clean_files_check.isChecked(),
+            "clean_cache": self.clean_cache_check.isChecked(),
+            "use_whitelist": self.use_whitelist_check.isChecked(),
+            "whitelist_exts": self.whitelist_exts_edit.text(),
+            "whitelist_paths": self.whitelist_paths_edit.text(),
+            "auto_clean": self.auto_clean_check.isChecked(),
+            "auto_clean_confirm": self.auto_confirm_check.isChecked(),
+            "auto_clean_interval_days": self.auto_days_edit.text().strip(),
+            "direct_delete": self.direct_delete_check.isChecked(),
+            "run_at_startup": self.run_at_startup_check.isChecked(),
+        }
+
+    def load_app_settings(self):
+        path = self.app_settings_path()
+        if not path.exists():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        self.source_edit.setText(data.get("source") or self.source_edit.text())
+        self.output_edit.setText(data.get("output") or self.output_edit.text())
+        self.cutoff_edit.setText(data.get("cutoff_month") or self.cutoff_edit.text())
+        self.retention_edit.setText(data.get("retention_days") or self.retention_edit.text())
+        self.clean_images_check.setChecked(bool(data.get("clean_images", self.clean_images_check.isChecked())))
+        self.clean_videos_check.setChecked(bool(data.get("clean_videos", self.clean_videos_check.isChecked())))
+        self.clean_files_check.setChecked(bool(data.get("clean_files", self.clean_files_check.isChecked())))
+        self.clean_cache_check.setChecked(bool(data.get("clean_cache", self.clean_cache_check.isChecked())))
+        self.use_whitelist_check.setChecked(bool(data.get("use_whitelist", self.use_whitelist_check.isChecked())))
+        self.whitelist_exts_edit.setText(data.get("whitelist_exts") or self.whitelist_exts_edit.text())
+        self.whitelist_paths_edit.setText(data.get("whitelist_paths") or self.whitelist_paths_edit.text())
+        self.auto_clean_check.setChecked(bool(data.get("auto_clean", self.auto_clean_check.isChecked())))
+        self.auto_confirm_check.setChecked(bool(data.get("auto_clean_confirm", self.auto_confirm_check.isChecked())))
+        self.auto_days_edit.setText(str(data.get("auto_clean_interval_days") or self.auto_days_edit.text()))
+        self.direct_delete_check.setChecked(bool(data.get("direct_delete", self.direct_delete_check.isChecked())))
+        self.run_at_startup_check.setChecked(bool(data.get("run_at_startup", self.run_at_startup_check.isChecked())))
+
+    def save_app_settings(self):
+        path = self.app_settings_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(self.collect_app_settings(), ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def startup_program_arguments(self):
+        if getattr(sys, "frozen", False):
+            args = [sys.executable, "--startup-auto-clean"]
+        else:
+            args = [sys.executable, str(Path(__file__).resolve()), "--startup-auto-clean"]
+        args.extend(["--output", self.output_edit.text().strip()])
+        return args
+
+    def apply_startup_setting(self):
+        self.save_app_settings()
+        result = write_launch_agent(self.startup_program_arguments(), enabled=self.run_at_startup_check.isChecked())
+        state = "已启用" if result["enabled"] else "已关闭"
+        self.log(f"开机自启动{state}：{result['path']}")
+        QMessageBox.information(self, "开机自启动", f"{state}。\n{result['path']}")
+
+    def run_startup_auto_clean(self):
+        if not self.auto_clean_check.isChecked():
+            self.log("启动自动清理未开启，跳过。")
+            return
+        values = self.validate_inputs()
+        if not values:
+            self.log("启动自动清理参数无效，跳过。")
+            return
+        self.log("启动自动清理：开始扫描并按周期检查。")
+        self.start_scan(*values, previous_scan=None)
+
     def cleanup_options(self):
         try:
             min_age_days = max(0, int(self.retention_edit.text().strip()))
@@ -789,14 +887,27 @@ class MacOSWindow(QMainWindow):
                     return
             except ValueError:
                 pass
-        result = QMessageBox.question(
-            self,
-            "定期自动清理",
-            "已到定期清理检查周期。是否按当前类型和保留天数生成清理预览？",
-        )
         self.save_auto_state()
-        if result == QMessageBox.Yes:
-            self.preview_cleanup()
+        self.save_app_settings()
+        if self.auto_confirm_check.isChecked():
+            result = QMessageBox.question(
+                self,
+                "定期自动清理",
+                "已到定期清理检查周期。是否按当前类型和保留天数生成清理预览？",
+            )
+            if result == QMessageBox.Yes:
+                self.preview_cleanup()
+            return
+        self.log("定期自动清理：清理前确认已关闭，按当前规则自动执行。")
+        self.preview_cleanup()
+        if self.cleanup_plan and self.cleanup_plan.get("count", 0):
+            self.execute_cleanup(confirm=False)
+
+    def cleanup_action_label(self):
+        return "永久删除" if self.direct_delete_check.isChecked() else "移动到回收站"
+
+    def cleanup_done_label(self):
+        return "已永久删除" if self.direct_delete_check.isChecked() else "已移动到回收站"
 
     def selected_cleanup_paths(self):
         if not self.cleanup_plan:
@@ -811,31 +922,36 @@ class MacOSWindow(QMainWindow):
                     paths.append(items[index]["path"])
         return paths
 
-    def execute_cleanup(self):
+    def execute_cleanup(self, confirm=True):
         if not self.cleanup_plan:
             self.preview_cleanup()
             if not self.cleanup_plan:
                 return
-        paths = self.selected_cleanup_paths()
+        paths = self.selected_cleanup_paths() if confirm else [item["path"] for item in self.cleanup_plan.get("items", [])]
         if not paths:
             QMessageBox.information(self, "没有选中文件", "请先勾选清理预览里的文件。")
             return
-        result = QMessageBox.question(
-            self,
-            "确认移动到回收站",
-            f"将 {len(paths)} 个文件移动到系统回收站。微信原目录会发生变化，但不是永久删除。是否继续？",
-        )
-        if result != QMessageBox.Yes:
-            return
-        self.cleanup_worker = CleanupWorker(self.cleanup_plan, paths)
+        action = self.cleanup_action_label()
+        if confirm:
+            warning = "此操作会跳过回收站，不能从系统废纸篓恢复。" if self.direct_delete_check.isChecked() else "微信原目录会发生变化，但不是永久删除。"
+            result = QMessageBox.question(
+                self,
+                f"确认{action}",
+                f"将 {len(paths)} 个文件{action}。{warning} 是否继续？",
+            )
+            if result != QMessageBox.Yes:
+                return
+        self.save_app_settings()
+        self.cleanup_worker = CleanupWorker(self.cleanup_plan, paths, direct_delete=self.direct_delete_check.isChecked())
         self.cleanup_worker.progress.connect(self.scan_progress)
         self.cleanup_worker.finished_ok.connect(self.cleanup_done)
         self.cleanup_worker.failed.connect(self.scan_failed)
         self.cleanup_worker.start()
 
     def cleanup_done(self, result):
-        self.log(f"已移动到回收站：{result['moved_count']} 个 / {result['moved_size']}，失败 {result['failed_count']} 个")
-        QMessageBox.information(self, "清理完成", f"已移动到回收站：{result['moved_count']} 个文件。")
+        label = "已永久删除" if result.get("direct_delete") else "已移动到回收站"
+        self.log(f"{label}：{result['moved_count']} 个 / {result['moved_size']}，失败 {result['failed_count']} 个")
+        QMessageBox.information(self, "清理完成", f"{label}：{result['moved_count']} 个文件。")
 
     def load_scan_json(self):
         path, _ = QFileDialog.getOpenFileName(self, "选择扫描 JSON", str(Path(self.output_edit.text()).expanduser()), "JSON (*.json)")
@@ -913,8 +1029,14 @@ class MacOSWindow(QMainWindow):
 
 
 def main():
+    startup_auto_clean = "--startup-auto-clean" in sys.argv
+    startup_output = None
+    if "--output" in sys.argv:
+        index = sys.argv.index("--output")
+        if index + 1 < len(sys.argv):
+            startup_output = sys.argv[index + 1]
     app = QApplication(sys.argv)
-    window = MacOSWindow()
+    window = MacOSWindow(startup_auto_clean=startup_auto_clean, startup_output=startup_output)
     window.show()
     sys.exit(app.exec_())
 

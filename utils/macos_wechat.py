@@ -3,7 +3,9 @@ import hashlib
 import html
 import json
 import os
+import plistlib
 import re
+import shutil
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -67,6 +69,8 @@ DEFAULT_CLEANUP_OPTIONS = {
         "cache": True,
     },
 }
+
+LAUNCH_AGENT_LABEL = "com.cleanmywechat.macos"
 
 
 def emit_progress(callback, percent, message, phase="scan"):
@@ -994,22 +998,39 @@ def build_cleanup_plan(scan_result, candidate_rows=None, options=None, now=None)
 
 
 def trash_cleanup_plan(plan, selected_paths=None, progress_callback=None, trash_func=None):
-    if trash_func is None:
+    return execute_cleanup_plan(plan, selected_paths, progress_callback=progress_callback, trash_func=trash_func, direct_delete=False)
+
+
+def _permanent_delete(path):
+    path = Path(path)
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+
+def execute_cleanup_plan(plan, selected_paths=None, progress_callback=None, trash_func=None, direct_delete=False, delete_func=None):
+    if trash_func is None and not direct_delete:
         if send2trash is None:
             raise RuntimeError("send2trash is not available")
         trash_func = send2trash
+    delete_func = delete_func or _permanent_delete
     selected = set(selected_paths or [item["path"] for item in plan.get("items", [])])
     items = [item for item in plan.get("items", []) if item.get("path") in selected]
     moved = []
     failed = []
     total = max(1, len(items))
+    verb = "永久删除" if direct_delete else "移动到回收站"
 
     for index, item in enumerate(items, 1):
         path = item.get("path", "")
-        emit_progress(progress_callback, int(index * 100 / total), f"正在移动到回收站：{Path(path).name}", "cleanup")
+        emit_progress(progress_callback, int(index * 100 / total), f"正在{verb}：{Path(path).name}", "cleanup")
         try:
             if Path(path).exists():
-                trash_func(path)
+                if direct_delete:
+                    delete_func(path)
+                else:
+                    trash_func(path)
                 moved.append(item)
         except Exception as exc:  # noqa: BLE001 - surfaced to the UI/report.
             failed.append({"path": path, "error": str(exc)})
@@ -1020,8 +1041,37 @@ def trash_cleanup_plan(plan, selected_paths=None, progress_callback=None, trash_
         "failed_count": len(failed),
         "moved_size_bytes": moved_size,
         "moved_size": human_size(moved_size),
+        "direct_delete": direct_delete,
+        "action": "delete" if direct_delete else "trash",
         "failed": failed,
     }
+
+
+def launch_agent_path(home=None, label=LAUNCH_AGENT_LABEL):
+    home_path = Path(home).expanduser() if home else Path.home()
+    return home_path / "Library/LaunchAgents" / f"{label}.plist"
+
+
+def write_launch_agent(program_arguments, enabled=True, home=None, label=LAUNCH_AGENT_LABEL):
+    path = launch_agent_path(home=home, label=label)
+    if not enabled:
+        if path.exists():
+            path.unlink()
+        return {"enabled": False, "path": str(path)}
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    log_dir = path.parent.parent / "Logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    plist = {
+        "Label": label,
+        "ProgramArguments": [str(arg) for arg in program_arguments],
+        "RunAtLoad": True,
+        "StandardOutPath": str(log_dir / "CleanMyWechat-macOS.out.log"),
+        "StandardErrorPath": str(log_dir / "CleanMyWechat-macOS.err.log"),
+    }
+    with path.open("wb") as handle:
+        plistlib.dump(plist, handle, sort_keys=False)
+    return {"enabled": True, "path": str(path), "program_arguments": plist["ProgramArguments"]}
 
 
 def safe_link_name(path):

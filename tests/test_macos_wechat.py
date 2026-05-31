@@ -10,11 +10,14 @@ from utils.macos_wechat import (
     create_symlink_view,
     discover_accounts,
     discover_accounts_from_roots,
+    execute_cleanup_plan,
+    launch_agent_path,
     load_scan_history,
     record_scan_history,
     render_dashboard_html,
     scan_macos_wechat,
     trash_cleanup_plan,
+    write_launch_agent,
     write_dashboard,
     write_scan_outputs,
 )
@@ -120,6 +123,18 @@ class MacOSWeChatTest(unittest.TestCase):
         self.assertEqual(result["moved_count"], 1)
         self.assertEqual(Path(moved[0]).name, "clip.mp4")
 
+    def test_cleanup_plan_can_permanently_delete_when_requested(self):
+        scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
+        selected = [row for row in scan["candidates"] if row["category"] == "msg_video"]
+        plan = build_cleanup_plan(scan, selected)
+        target = self.account / "msg/video/2024-01/clip.mp4"
+
+        result = execute_cleanup_plan(plan, direct_delete=True)
+
+        self.assertEqual(result["moved_count"], 1)
+        self.assertTrue(result["direct_delete"])
+        self.assertFalse(target.exists())
+
     def test_cleanup_plan_matches_original_type_and_age_controls(self):
         old_time = (datetime.now() - timedelta(days=400)).timestamp()
         new_time = datetime.now().timestamp()
@@ -189,6 +204,22 @@ class MacOSWeChatTest(unittest.TestCase):
         history = load_scan_history(output)
         self.assertEqual(history[0]["json"], entry["json"])
         self.assertEqual(history[0]["diff"]["added_count"], 1)
+
+    def test_launch_agent_write_and_remove(self):
+        home = Path(self.tmp.name) / "home"
+        args = ["/usr/bin/python3", "/tmp/macos_app.py", "--startup-auto-clean", "--output", "/tmp/out"]
+
+        result = write_launch_agent(args, enabled=True, home=home, label="com.cleanmywechat.test")
+        plist_path = launch_agent_path(home=home, label="com.cleanmywechat.test")
+
+        self.assertEqual(result["path"], str(plist_path))
+        self.assertTrue(plist_path.exists())
+        text = plist_path.read_text(encoding="utf-8")
+        self.assertIn("--startup-auto-clean", text)
+
+        result = write_launch_agent(args, enabled=False, home=home, label="com.cleanmywechat.test")
+        self.assertFalse(plist_path.exists())
+        self.assertFalse(result["enabled"])
 
 
 if __name__ == "__main__":
