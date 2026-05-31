@@ -4,11 +4,17 @@ import unittest
 from pathlib import Path
 
 from utils.macos_wechat import (
+    build_cleanup_plan,
+    compare_scan_results,
     create_symlink_view,
     discover_accounts,
+    load_scan_history,
+    record_scan_history,
     render_dashboard_html,
     scan_macos_wechat,
+    trash_cleanup_plan,
     write_dashboard,
+    write_scan_outputs,
 )
 
 
@@ -42,7 +48,7 @@ class MacOSWeChatTest(unittest.TestCase):
         scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
         self.assertTrue(scan["xwechat_root_exists"])
         self.assertEqual(len(scan["accounts"]), 1)
-        self.assertEqual(scan["summary"]["file_count"], 3)
+        self.assertEqual(scan["summary"]["file_count"], 4)
         self.assertEqual(scan["summary"]["by_kind"][0]["name"], "Word")
 
         categories = {(row["category"], row["month"]) for row in scan["candidates"]}
@@ -66,7 +72,7 @@ class MacOSWeChatTest(unittest.TestCase):
         events = []
         scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024, progress_callback=events.append)
 
-        self.assertEqual(scan["summary"]["file_count"], 3)
+        self.assertEqual(scan["summary"]["file_count"], 4)
         self.assertTrue(events)
         self.assertEqual(events[-1]["percent"], 100)
         self.assertTrue(any(event["phase"] == "scan" for event in events))
@@ -96,6 +102,34 @@ class MacOSWeChatTest(unittest.TestCase):
         report_links = [path for path in links if path.name == "report.pdf"]
         self.assertTrue(report_links)
         self.assertEqual(report_links[0].resolve().read_bytes(), b"report")
+
+    def test_cleanup_plan_uses_candidate_buckets_and_trash_callback(self):
+        scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
+        selected = [row for row in scan["candidates"] if row["category"] == "msg_file"]
+        plan = build_cleanup_plan(scan, selected)
+
+        paths = {Path(item["path"]).name for item in plan["items"]}
+        self.assertIn("report.pdf", paths)
+        self.assertNotIn("current.docx", paths)
+
+        moved = []
+        result = trash_cleanup_plan(plan, trash_func=moved.append)
+        self.assertEqual(result["moved_count"], 1)
+        self.assertEqual(Path(moved[0]).name, "report.pdf")
+
+    def test_scan_history_and_incremental_diff(self):
+        old_scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
+        write_file(self.account / "msg/file/2024-03/new.pdf", b"new")
+        new_scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
+        diff = compare_scan_results(old_scan, new_scan)
+
+        self.assertEqual(diff["added_count"], 1)
+        output = Path(self.tmp.name) / "out"
+        outputs = write_scan_outputs(new_scan, output / "reports")
+        entry = record_scan_history(output, new_scan, outputs, diff=diff)
+        history = load_scan_history(output)
+        self.assertEqual(history[0]["json"], entry["json"])
+        self.assertEqual(history[0]["diff"]["added_count"], 1)
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@
 
 **现已经支持 Windows 系统中的所有微信版本，包含最新版的微信 4.0+ 和企业微信。**
 
-> macOS 支持仍处于实验阶段：当前提供只读扫描、统计 Dashboard、重复大文件检查和符号链接整理视图，不会移动、删除或重命名微信原文件。
+> macOS 支持仍处于实验阶段：当前提供扫描统计、历史结果加载、增量对比、重复大文件检查、符号链接整理视图和清理前预览。执行清理时默认移动到系统回收站，不做永久删除。
 
 [国内地址 - 点击下载](
 https://wwbie.lanzoue.com/iHgXp3ql84ng)
@@ -35,7 +35,7 @@ macOS 微信 4.x 的本地文件通常位于：
 ~/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files
 ```
 
-本仓库提供一个独立的 macOS 只读入口，帮助先看清楚文件、月份、类型、重复大文件和候选清理桶，再决定是否人工归档。图形界面和命令行扫描都会显示进度。
+本仓库提供一个独立的 macOS 入口，帮助先看清楚文件、月份、类型、重复大文件和候选清理桶，再决定是否人工归档或移动到系统回收站。图形界面和命令行扫描都会显示带时间戳的进度。
 
 安装依赖：
 
@@ -57,6 +57,12 @@ python3 macos_app.py
 python3 macos_scan.py
 ```
 
+如果要和上一次扫描做增量对比：
+
+```bash
+python3 macos_scan.py --previous-scan ~/Documents/CleanMyWechat-macOS/reports/macos_wechat_scan_YYYYMMDD_HHMMSS.json
+```
+
 本地打包为 `.app`：
 
 ```bash
@@ -73,14 +79,15 @@ pyinstaller --windowed --name CleanMyWechat-macOS macos_app.py
 
 - `dashboard/wechat_dashboard.html`：本地静态 Dashboard，可按类型、月份、大小搜索和筛选；
 - `organized_view/`：按月份、类型、大文件创建的符号链接视图；
-- `reports/`：JSON、CSV 和 Markdown 扫描报告。
+- `reports/`：JSON、CSV、Markdown 扫描报告，以及 `scan_history.json` 历史索引。
 
 安全说明：
 
-- 默认不删除、不移动、不改名任何微信文件；
+- 扫描、Dashboard、历史加载和整理视图不会删除、不移动、不改名任何微信文件；
+- 图形界面的“候选清理”需要先生成预览并再次确认，确认后移动到系统回收站；
 - `organized_view/` 只包含符号链接，删除链接不会删除微信原文件；
 - `db_storage`、`config`、`business/favorite` 等运行数据只统计，不纳入整理视图；
-- 如需释放空间，建议先从 Dashboard 中确认大文件和重复文件，再手工归档。
+- 如需释放空间，建议先从 Dashboard 或候选清理预览中确认大文件和重复文件。
 
 ## 运行截图
 

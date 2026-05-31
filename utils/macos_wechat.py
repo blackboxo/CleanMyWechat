@@ -9,6 +9,11 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
+try:
+    from send2trash import send2trash
+except ImportError:  # pragma: no cover - dependency is declared for normal app use.
+    send2trash = None
+
 
 MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 DEFAULT_CUTOFF_MONTH = "2025-06"
@@ -37,6 +42,13 @@ KIND_ORDER = [
     "Text",
     "Other",
 ]
+
+CLEANUP_CATEGORY_LABELS = {
+    "msg_file": "接收文件",
+    "msg_video": "视频",
+    "msg_attach": "图片/附件",
+    "account_cache": "账号缓存",
+}
 
 
 def emit_progress(callback, percent, message, phase="scan"):
@@ -218,6 +230,10 @@ def kind_for_path(path):
     if suffix in {".txt", ".md"}:
         return "Text"
     return "Other"
+
+
+def category_label(category):
+    return CLEANUP_CATEGORY_LABELS.get(category, category)
 
 
 def month_dir_sizes(root):
@@ -429,7 +445,9 @@ def scan_macos_wechat(
         cache = account / "cache"
         duplicate_roots.extend([msg_file, msg_video, msg_attach])
 
-        record_midpoint = account_start + max(1, (account_end - account_start) // 2)
+        span = max(3, account_end - account_start)
+        file_mark = account_start + max(1, span // 3)
+        video_mark = account_start + max(2, span * 2 // 3)
         records.extend(
             collect_file_records(
                 account,
@@ -437,7 +455,7 @@ def scan_macos_wechat(
                 msg_file,
                 progress_callback=progress_callback,
                 progress_base=account_start + 2,
-                progress_span=max(1, record_midpoint - account_start - 2),
+                progress_span=max(1, file_mark - account_start - 2),
             )
         )
         records.extend(
@@ -446,8 +464,18 @@ def scan_macos_wechat(
                 "msg/video",
                 msg_video,
                 progress_callback=progress_callback,
-                progress_base=record_midpoint,
-                progress_span=max(1, account_end - record_midpoint),
+                progress_base=file_mark,
+                progress_span=max(1, video_mark - file_mark),
+            )
+        )
+        records.extend(
+            collect_file_records(
+                account,
+                "msg/attach",
+                msg_attach,
+                progress_callback=progress_callback,
+                progress_base=video_mark,
+                progress_span=max(1, account_end - video_mark),
             )
         )
 
@@ -556,7 +584,7 @@ def write_csv(path, rows):
 def write_scan_outputs(scan_result, output_dir):
     output_dir = Path(output_dir).expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     json_path = output_dir / f"macos_wechat_scan_{stamp}.json"
     files_csv = output_dir / f"macos_wechat_files_{stamp}.csv"
     candidates_csv = output_dir / f"macos_wechat_candidates_{stamp}.csv"
@@ -587,6 +615,163 @@ def write_scan_outputs(scan_result, output_dir):
         "files_csv": str(files_csv),
         "candidates_csv": str(candidates_csv),
         "duplicates_csv": str(duplicates_csv),
+    }
+
+
+def load_scan_result(path):
+    path = Path(path).expanduser()
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def scan_history_path(output_dir):
+    return Path(output_dir).expanduser() / "reports/scan_history.json"
+
+
+def load_scan_history(output_dir):
+    path = scan_history_path(output_dir)
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    return data if isinstance(data, list) else []
+
+
+def record_scan_history(output_dir, scan_result, outputs, dashboard_path=None, summary_path=None, view_path=None, diff=None):
+    path = scan_history_path(output_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    history = load_scan_history(output_dir)
+    entry = {
+        "generated_at": scan_result.get("generated_at", datetime.now().isoformat(timespec="seconds")),
+        "xwechat_root": scan_result.get("xwechat_root", ""),
+        "cutoff_month": scan_result.get("cutoff_month", ""),
+        "file_count": scan_result.get("summary", {}).get("file_count", 0),
+        "total_size": scan_result.get("summary", {}).get("total_size", "0 B"),
+        "total_size_bytes": scan_result.get("summary", {}).get("total_size_bytes", 0),
+        "duplicate_group_count": scan_result.get("summary", {}).get("duplicate_group_count", 0),
+        "json": outputs.get("json", ""),
+        "dashboard": str(dashboard_path or ""),
+        "summary": str(summary_path or ""),
+        "view": str(view_path or ""),
+        "diff": diff or {},
+    }
+    history = [row for row in history if row.get("json") != entry["json"]]
+    history.insert(0, entry)
+    path.write_text(json.dumps(history[:50], ensure_ascii=False, indent=2), encoding="utf-8")
+    return entry
+
+
+def _signature(record):
+    return (record.get("size_bytes", 0), record.get("mtime", ""))
+
+
+def compare_scan_results(previous_scan, current_scan):
+    previous = {row["path"]: row for row in previous_scan.get("files", [])}
+    current = {row["path"]: row for row in current_scan.get("files", [])}
+
+    added = [current[path] for path in current.keys() - previous.keys()]
+    removed = [previous[path] for path in previous.keys() - current.keys()]
+    changed = [current[path] for path in current.keys() & previous.keys() if _signature(current[path]) != _signature(previous[path])]
+
+    return {
+        "added_count": len(added),
+        "removed_count": len(removed),
+        "changed_count": len(changed),
+        "added_size_bytes": sum(row.get("size_bytes", 0) for row in added),
+        "removed_size_bytes": sum(row.get("size_bytes", 0) for row in removed),
+        "changed_size_bytes": sum(row.get("size_bytes", 0) for row in changed),
+        "added_size": human_size(sum(row.get("size_bytes", 0) for row in added)),
+        "removed_size": human_size(sum(row.get("size_bytes", 0) for row in removed)),
+        "changed_size": human_size(sum(row.get("size_bytes", 0) for row in changed)),
+        "added": added[:200],
+        "removed": removed[:200],
+        "changed": changed[:200],
+    }
+
+
+def _path_within(path, root):
+    try:
+        Path(path).resolve().relative_to(Path(root).resolve())
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def build_cleanup_plan(scan_result, candidate_rows=None):
+    root = scan_result.get("xwechat_root", "")
+    candidates = candidate_rows if candidate_rows is not None else scan_result.get("candidates", [])
+    items = []
+    seen = set()
+
+    for candidate in candidates:
+        candidate_path = Path(candidate.get("path", "")).expanduser()
+        if not candidate_path.exists() or not _path_within(candidate_path, root):
+            continue
+        for path in iter_files(candidate_path):
+            if not _path_within(path, root):
+                continue
+            if candidate.get("category") == "msg_attach" and month_from_path(path) != candidate.get("month"):
+                continue
+            path_key = str(path)
+            if path_key in seen:
+                continue
+            seen.add(path_key)
+            size = file_size(path)
+            items.append(
+                {
+                    "path": path_key,
+                    "name": path.name,
+                    "category": candidate.get("category", ""),
+                    "category_label": category_label(candidate.get("category", "")),
+                    "account": candidate.get("account", ""),
+                    "month": month_from_path(path),
+                    "size_bytes": size,
+                    "size": human_size(size),
+                    "mtime": file_mtime(path),
+                }
+            )
+
+    items.sort(key=lambda row: row["size_bytes"], reverse=True)
+    total_size = sum(row["size_bytes"] for row in items)
+    return {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "source": root,
+        "count": len(items),
+        "total_size_bytes": total_size,
+        "total_size": human_size(total_size),
+        "items": items,
+    }
+
+
+def trash_cleanup_plan(plan, selected_paths=None, progress_callback=None, trash_func=None):
+    if trash_func is None:
+        if send2trash is None:
+            raise RuntimeError("send2trash is not available")
+        trash_func = send2trash
+    selected = set(selected_paths or [item["path"] for item in plan.get("items", [])])
+    items = [item for item in plan.get("items", []) if item.get("path") in selected]
+    moved = []
+    failed = []
+    total = max(1, len(items))
+
+    for index, item in enumerate(items, 1):
+        path = item.get("path", "")
+        emit_progress(progress_callback, int(index * 100 / total), f"正在移动到回收站：{Path(path).name}", "cleanup")
+        try:
+            if Path(path).exists():
+                trash_func(path)
+                moved.append(item)
+        except Exception as exc:  # noqa: BLE001 - surfaced to the UI/report.
+            failed.append({"path": path, "error": str(exc)})
+
+    moved_size = sum(item.get("size_bytes", 0) for item in moved)
+    return {
+        "moved_count": len(moved),
+        "failed_count": len(failed),
+        "moved_size_bytes": moved_size,
+        "moved_size": human_size(moved_size),
+        "failed": failed,
     }
 
 
