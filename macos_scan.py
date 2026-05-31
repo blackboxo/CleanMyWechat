@@ -6,7 +6,6 @@ from utils.macos_wechat import (
     DEFAULT_CUTOFF_MONTH,
     compare_scan_results,
     create_symlink_view,
-    default_xwechat_root,
     load_scan_result,
     record_scan_history,
     scan_macos_wechat,
@@ -18,7 +17,7 @@ from utils.macos_wechat import (
 
 def parse_args():
     parser = argparse.ArgumentParser(description="只读扫描 macOS 微信文件，并生成本地 Dashboard。")
-    parser.add_argument("--source", default=str(default_xwechat_root()), help="macOS xwechat_files 路径。")
+    parser.add_argument("--source", default="AUTO", help="macOS 微信数据路径；默认 AUTO 自动识别常见微信/企业微信目录。")
     parser.add_argument("--output", default=str(Path.home() / "Documents/CleanMyWechat-macOS"), help="输出目录。")
     parser.add_argument("--cutoff-month", default=DEFAULT_CUTOFF_MONTH, help="YYYY-MM；早于该月份的内容会列为候选桶。")
     parser.add_argument("--no-view", action="store_true", help="跳过符号链接整理视图。")

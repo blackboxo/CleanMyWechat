@@ -9,6 +9,7 @@ from utils.macos_wechat import (
     compare_scan_results,
     create_symlink_view,
     discover_accounts,
+    discover_accounts_from_roots,
     load_scan_history,
     record_scan_history,
     render_dashboard_html,
@@ -35,6 +36,7 @@ class MacOSWeChatTest(unittest.TestCase):
         write_file(self.account / "msg/video/2024-01/clip.mp4", b"video")
         write_file(self.account / "msg/attach/contact_hash/2024-01/Img/photo.jpg", b"photo")
         write_file(self.account / "cache/2024-01/cache.bin", b"cache")
+        write_file(self.account / "business/xweb/2024-01/web.cache", b"x")
         write_file(self.account / "db_storage/message/message.db", b"database")
         write_file(self.root / "all_users/config.sqlite", b"ignored")
 
@@ -49,7 +51,7 @@ class MacOSWeChatTest(unittest.TestCase):
         scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
         self.assertTrue(scan["xwechat_root_exists"])
         self.assertEqual(len(scan["accounts"]), 1)
-        self.assertEqual(scan["summary"]["file_count"], 5)
+        self.assertEqual(scan["summary"]["file_count"], 6)
         self.assertEqual(scan["summary"]["by_kind"][0]["name"], "Word")
 
         categories = {(row["category"], row["month"]) for row in scan["candidates"]}
@@ -73,7 +75,7 @@ class MacOSWeChatTest(unittest.TestCase):
         events = []
         scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024, progress_callback=events.append)
 
-        self.assertEqual(scan["summary"]["file_count"], 5)
+        self.assertEqual(scan["summary"]["file_count"], 6)
         self.assertTrue(events)
         self.assertEqual(events[-1]["percent"], 100)
         self.assertTrue(any(event["phase"] == "scan" for event in events))
@@ -106,17 +108,17 @@ class MacOSWeChatTest(unittest.TestCase):
 
     def test_cleanup_plan_uses_candidate_buckets_and_trash_callback(self):
         scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
-        selected = [row for row in scan["candidates"] if row["category"] == "msg_file"]
+        selected = [row for row in scan["candidates"] if row["category"] == "msg_video"]
         plan = build_cleanup_plan(scan, selected)
 
         paths = {Path(item["path"]).name for item in plan["items"]}
-        self.assertIn("report.pdf", paths)
+        self.assertIn("clip.mp4", paths)
         self.assertNotIn("current.docx", paths)
 
         moved = []
         result = trash_cleanup_plan(plan, trash_func=moved.append)
         self.assertEqual(result["moved_count"], 1)
-        self.assertEqual(Path(moved[0]).name, "report.pdf")
+        self.assertEqual(Path(moved[0]).name, "clip.mp4")
 
     def test_cleanup_plan_matches_original_type_and_age_controls(self):
         old_time = (datetime.now() - timedelta(days=400)).timestamp()
@@ -136,6 +138,32 @@ class MacOSWeChatTest(unittest.TestCase):
 
         names = {Path(item["path"]).name for item in plan["items"]}
         self.assertEqual(names, {"photo.jpg"})
+
+    def test_cleanup_plan_respects_whitelist_and_expanded_cache_roots(self):
+        old_time = (datetime.now() - timedelta(days=400)).timestamp()
+        os.utime(self.account / "msg/file/2024-01/report.pdf", (old_time, old_time))
+        os.utime(self.account / "business/xweb/2024-01/web.cache", (old_time, old_time))
+
+        scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
+        plan = build_cleanup_plan(
+            scan,
+            options={
+                "min_age_days": 365,
+                "categories": {"image": False, "video": False, "file": True, "cache": True},
+            },
+        )
+
+        names = {Path(item["path"]).name for item in plan["items"]}
+        self.assertIn("web.cache", names)
+        self.assertNotIn("report.pdf", names)
+
+    def test_discovers_accounts_from_multiple_roots(self):
+        other_root = Path(self.tmp.name) / "other_xwechat_files"
+        other_account = other_root / "wxid_bob_efgh"
+        write_file(other_account / "msg/file/2024-01/notes.txt", b"notes")
+
+        accounts = discover_accounts_from_roots([self.root, other_root])
+        self.assertEqual([path.name for path in accounts], ["wxid_alice_abcd", "wxid_bob_efgh"])
 
     def test_discovers_wxwork_accounts(self):
         users_root = Path(self.tmp.name) / "WXWork/Users"

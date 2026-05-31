@@ -57,6 +57,9 @@ CLEANUP_CATEGORY_LABELS = {
 
 DEFAULT_CLEANUP_OPTIONS = {
     "min_age_days": 365,
+    "use_whitelist": True,
+    "whitelist_paths": [],
+    "whitelist_exts": [".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".pdf"],
     "categories": {
         "image": True,
         "video": True,
@@ -137,6 +140,13 @@ def discover_xwechat_roots(home=None):
     return [path for path in common_xwechat_roots(home) if path.exists()]
 
 
+def resolve_scan_roots(xwechat_root=None):
+    if xwechat_root is None or str(xwechat_root).strip().upper() == "AUTO":
+        roots = discover_xwechat_roots()
+        return roots or [default_xwechat_root()]
+    return [Path(xwechat_root).expanduser()]
+
+
 def is_account_dir(path):
     if not path or not Path(path).is_dir():
         return False
@@ -167,6 +177,18 @@ def discover_accounts(xwechat_root):
     if not root.exists():
         return []
     return sorted([path for path in root.iterdir() if is_account_dir(path)], key=lambda path: path.name)
+
+
+def discover_accounts_from_roots(roots):
+    accounts = []
+    seen = set()
+    for root in roots:
+        for account in discover_accounts(root):
+            key = str(account.resolve())
+            if key not in seen:
+                seen.add(key)
+                accounts.append(account)
+    return sorted(accounts, key=lambda path: (path.name, str(path)))
 
 
 def block_size(path):
@@ -309,6 +331,35 @@ def attach_month_summary(root):
         if MONTH_RE.match(month):
             result[month] += block_size(path)
     return dict(sorted(result.items()))
+
+
+def merge_month_summaries(*summaries):
+    result = defaultdict(int)
+    for summary in summaries:
+        for month, size in summary.items():
+            result[month] += size
+    return dict(sorted(result.items()))
+
+
+def cache_roots_for_account(account):
+    candidates = [
+        account / "cache",
+        account / "temp",
+        account / "apm_record",
+        account / "business/InputTemp",
+        account / "business/emoticon/Temp",
+        account / "business/emoticon/Thumb",
+        account / "business/xweb",
+        account / "Applet",
+        account / "WMPF",
+        account / "WeChatAppEx",
+        account / "XPlugin",
+    ]
+    return [path for path in candidates if path.exists()]
+
+
+def _path_under_any(path, roots):
+    return any(_path_within(path, root) for root in roots)
 
 
 def collect_file_records(account, source_name, root, progress_callback=None, progress_base=0, progress_span=0):
@@ -472,10 +523,10 @@ def scan_macos_wechat(
     duplicate_threshold=DEFAULT_DUPLICATE_THRESHOLD,
     progress_callback=None,
 ):
-    root = Path(xwechat_root).expanduser() if xwechat_root else default_xwechat_root()
+    roots = resolve_scan_roots(xwechat_root)
     emit_progress(progress_callback, 1, "准备扫描 macOS 微信数据目录", "prepare")
     emit_progress(progress_callback, 3, "正在定位微信账号目录", "prepare")
-    accounts = discover_accounts(root)
+    accounts = discover_accounts_from_roots(roots)
     account_rows = []
     candidates = []
     records = []
@@ -512,10 +563,11 @@ def scan_macos_wechat(
             msg_file = account / "msg/file"
             msg_video = account / "msg/video"
             msg_attach = account / "msg/attach"
-            cache = account / "cache"
+            cache_roots = cache_roots_for_account(account)
             duplicate_roots.extend([msg_file, msg_video, msg_attach])
+            duplicate_roots.extend(cache_roots)
 
-            span = max(4, account_end - account_start)
+            span = max(5, account_end - account_start)
             file_mark = account_start + max(1, span // 4)
             video_mark = account_start + max(2, span // 2)
             attach_mark = account_start + max(3, span * 3 // 4)
@@ -549,22 +601,25 @@ def scan_macos_wechat(
                     progress_span=max(1, attach_mark - video_mark),
                 )
             )
-            records.extend(
-                collect_file_records(
-                    account,
-                    "cache",
-                    cache,
-                    progress_callback=progress_callback,
-                    progress_base=attach_mark,
-                    progress_span=max(1, account_end - attach_mark),
+            cache_span = max(1, account_end - attach_mark)
+            for cache_index, cache_root in enumerate(cache_roots, 1):
+                cache_progress = attach_mark + int(cache_span * (cache_index - 1) / max(1, len(cache_roots)))
+                records.extend(
+                    collect_file_records(
+                        account,
+                        f"cache/{cache_root.name}",
+                        cache_root,
+                        progress_callback=progress_callback,
+                        progress_base=cache_progress,
+                        progress_span=1,
+                    )
                 )
-            )
 
             months = {
                 "msg_file": month_dir_sizes(msg_file),
                 "msg_video": month_dir_sizes(msg_video),
                 "msg_attach": attach_month_summary(msg_attach),
-                "account_cache": month_dir_sizes(cache),
+                "account_cache": merge_month_summaries(*(attach_month_summary(path) for path in cache_roots)),
             }
 
         for category, month_sizes in months.items():
@@ -577,7 +632,7 @@ def scan_macos_wechat(
                             "msg_file": msg_file / month,
                             "msg_video": msg_video / month,
                             "msg_attach": msg_attach,
-                            "account_cache": cache / month,
+                            "account_cache": account,
                         }[category]
                     note = {
                         "msg_file": "用户可见的接收文件",
@@ -636,13 +691,14 @@ def scan_macos_wechat(
     summary["duplicate_potential_savings"] = human_size(duplicate_savings)
 
     emit_progress(progress_callback, 96, "正在计算 xwechat_files 总体占用", "summary")
-    root_size = tree_size(root)
+    root_size = sum(tree_size(root) for root in roots)
     emit_progress(progress_callback, 100, "扫描完成", "done")
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "platform": "macOS",
-        "xwechat_root": str(root),
-        "xwechat_root_exists": root.exists(),
+        "xwechat_root": str(roots[0]) if len(roots) == 1 else "AUTO",
+        "source_roots": [str(root) for root in roots],
+        "xwechat_root_exists": any(root.exists() for root in roots),
         "xwechat_root_size_bytes": root_size,
         "xwechat_root_size": human_size(root_size),
         "cutoff_month": cutoff_month,
@@ -784,31 +840,75 @@ def _path_within(path, root):
         return False
 
 
+def _source_roots(scan_result):
+    roots = scan_result.get("source_roots") or [scan_result.get("xwechat_root", "")]
+    return [root for root in roots if root and root != "AUTO"]
+
+
+def _path_within_sources(path, scan_result):
+    return any(_path_within(path, root) for root in _source_roots(scan_result))
+
+
 def _cleanup_options(options):
     merged = {
         "min_age_days": DEFAULT_CLEANUP_OPTIONS["min_age_days"],
+        "use_whitelist": DEFAULT_CLEANUP_OPTIONS["use_whitelist"],
+        "whitelist_paths": list(DEFAULT_CLEANUP_OPTIONS["whitelist_paths"]),
+        "whitelist_exts": list(DEFAULT_CLEANUP_OPTIONS["whitelist_exts"]),
         "categories": dict(DEFAULT_CLEANUP_OPTIONS["categories"]),
     }
     if options:
         if "min_age_days" in options:
             merged["min_age_days"] = int(options.get("min_age_days", merged["min_age_days"]))
+        if "use_whitelist" in options:
+            merged["use_whitelist"] = bool(options.get("use_whitelist"))
+        if "whitelist_paths" in options:
+            merged["whitelist_paths"] = list(options.get("whitelist_paths") or [])
+        if "whitelist_exts" in options:
+            merged["whitelist_exts"] = list(options.get("whitelist_exts") or [])
         merged["categories"].update(options.get("categories", {}))
+    merged["whitelist_exts"] = [
+        ext if ext.startswith(".") else f".{ext}"
+        for ext in [str(value).strip().lower() for value in merged["whitelist_exts"]]
+        if ext
+    ]
+    merged["whitelist_paths"] = [str(Path(path).expanduser()) for path in merged["whitelist_paths"] if str(path).strip()]
     return merged
 
 
+def _is_whitelisted(path, options):
+    if not options.get("use_whitelist", True):
+        return False
+    path = Path(path).expanduser()
+    if path.suffix.lower() in set(options.get("whitelist_exts", [])):
+        return True
+    return any(_path_within(path, root) for root in options.get("whitelist_paths", []))
+
+
+def _candidate_allows_path(candidate, path):
+    category = candidate.get("category")
+    month = candidate.get("month")
+    if category in {"msg_attach", "wxwork_data", "account_cache"} and month_from_path(path) != month:
+        return False
+    if category == "account_cache":
+        return _path_under_any(path, cache_roots_for_account(Path(candidate.get("path", "")).expanduser()))
+    return True
+
+
 def build_cleanup_plan(scan_result, candidate_rows=None, options=None, now=None):
-    root = scan_result.get("xwechat_root", "")
     items = []
     seen = set()
     now = now or datetime.now()
+    merged_options = _cleanup_options(options)
 
     if options is not None:
-        merged_options = _cleanup_options(options)
         min_age_days = max(0, int(merged_options["min_age_days"]))
         enabled = merged_options["categories"]
         for record in scan_result.get("files", []):
             path = Path(record.get("path", "")).expanduser()
-            if not path.exists() or not _path_within(path, root):
+            if not path.exists() or not _path_within_sources(path, scan_result):
+                continue
+            if _is_whitelisted(path, merged_options):
                 continue
             category = cleanup_category_for_record(record)
             if not enabled.get(category, False):
@@ -838,7 +938,8 @@ def build_cleanup_plan(scan_result, candidate_rows=None, options=None, now=None)
         total_size = sum(row["size_bytes"] for row in items)
         return {
             "generated_at": datetime.now().isoformat(timespec="seconds"),
-            "source": root,
+            "source": scan_result.get("xwechat_root", ""),
+            "source_roots": _source_roots(scan_result),
             "mode": "type_age",
             "options": merged_options,
             "count": len(items),
@@ -850,12 +951,14 @@ def build_cleanup_plan(scan_result, candidate_rows=None, options=None, now=None)
     candidates = candidate_rows if candidate_rows is not None else scan_result.get("candidates", [])
     for candidate in candidates:
         candidate_path = Path(candidate.get("path", "")).expanduser()
-        if not candidate_path.exists() or not _path_within(candidate_path, root):
+        if not candidate_path.exists() or not _path_within_sources(candidate_path, scan_result):
             continue
         for path in iter_files(candidate_path):
-            if not _path_within(path, root):
+            if not _path_within_sources(path, scan_result):
                 continue
-            if candidate.get("category") == "msg_attach" and month_from_path(path) != candidate.get("month"):
+            if not _candidate_allows_path(candidate, path):
+                continue
+            if _is_whitelisted(path, merged_options):
                 continue
             path_key = str(path)
             if path_key in seen:
@@ -881,7 +984,8 @@ def build_cleanup_plan(scan_result, candidate_rows=None, options=None, now=None)
     total_size = sum(row["size_bytes"] for row in items)
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "source": root,
+        "source": scan_result.get("xwechat_root", ""),
+        "source_roots": _source_roots(scan_result),
         "count": len(items),
         "total_size_bytes": total_size,
         "total_size": human_size(total_size),

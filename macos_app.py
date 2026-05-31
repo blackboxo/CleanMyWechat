@@ -29,6 +29,7 @@ from PyQt5.QtWidgets import (
 )
 
 from utils.macos_wechat import (
+    DEFAULT_CLEANUP_OPTIONS,
     DEFAULT_CUTOFF_MONTH,
     build_cleanup_plan,
     category_label,
@@ -58,7 +59,7 @@ class ScanWorker(QThread):
 
     def __init__(self, source, output, cutoff_month, previous_scan=None):
         super().__init__()
-        self.source = Path(source).expanduser()
+        self.source = Path(source).expanduser() if source else None
         self.output = Path(output).expanduser()
         self.cutoff_month = cutoff_month
         self.previous_scan = previous_scan
@@ -207,7 +208,8 @@ class MacOSWindow(QMainWindow):
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(10)
 
-        self.source_edit = QLineEdit(str(default_xwechat_root()))
+        self.source_edit = QLineEdit("AUTO")
+        self.source_edit.setPlaceholderText(str(default_xwechat_root()))
         self.output_edit = QLineEdit(self.output_path)
         self.cutoff_edit = QLineEdit(DEFAULT_CUTOFF_MONTH)
         self.cutoff_edit.setMaximumWidth(130)
@@ -258,7 +260,7 @@ class MacOSWindow(QMainWindow):
         self.tabs.addTab(tab, "扫描")
 
         self.log("准备就绪。可以扫描、加载旧结果，或基于旧结果做增量对比扫描。")
-        self.log(f"默认数据目录：{self.source_edit.text()}")
+        self.log("默认数据目录：AUTO（自动识别常见微信/企业微信目录）")
 
     def build_overview_tab(self):
         tab = QWidget()
@@ -301,6 +303,12 @@ class MacOSWindow(QMainWindow):
         self.clean_files_check.setChecked(False)
         self.clean_cache_check = QCheckBox("缓存")
         self.clean_cache_check.setChecked(True)
+        self.use_whitelist_check = QCheckBox("启用白名单")
+        self.use_whitelist_check.setChecked(True)
+        self.whitelist_exts_edit = QLineEdit(",".join(DEFAULT_CLEANUP_OPTIONS["whitelist_exts"]))
+        self.whitelist_exts_edit.setPlaceholderText(".doc,.docx,.xlsx,.pdf")
+        self.whitelist_paths_edit = QLineEdit("")
+        self.whitelist_paths_edit.setPlaceholderText("白名单路径，多个用逗号分隔")
         self.auto_clean_check = QCheckBox("定期自动清理")
         self.auto_days_edit = QLineEdit("30")
         self.auto_days_edit.setMaximumWidth(80)
@@ -310,10 +318,15 @@ class MacOSWindow(QMainWindow):
         settings_layout.addWidget(self.clean_videos_check, 0, 3)
         settings_layout.addWidget(self.clean_files_check, 0, 4)
         settings_layout.addWidget(self.clean_cache_check, 0, 5)
-        settings_layout.addWidget(self.auto_clean_check, 1, 0)
-        settings_layout.addWidget(QLabel("清理间隔天数"), 1, 1)
-        settings_layout.addWidget(self.auto_days_edit, 1, 2)
-        settings_layout.addWidget(QLabel("默认和原项目一致：按类型 + 保留天数预览，确认后移入回收站。"), 1, 3, 1, 3)
+        settings_layout.addWidget(self.use_whitelist_check, 1, 0)
+        settings_layout.addWidget(QLabel("白名单扩展名"), 1, 1)
+        settings_layout.addWidget(self.whitelist_exts_edit, 1, 2, 1, 2)
+        settings_layout.addWidget(QLabel("白名单路径"), 2, 0)
+        settings_layout.addWidget(self.whitelist_paths_edit, 2, 1, 1, 3)
+        settings_layout.addWidget(self.auto_clean_check, 3, 0)
+        settings_layout.addWidget(QLabel("清理间隔天数"), 3, 1)
+        settings_layout.addWidget(self.auto_days_edit, 3, 2)
+        settings_layout.addWidget(QLabel("按类型 + 保留天数预览，确认后移入回收站。"), 3, 3, 1, 3)
         layout.addWidget(settings)
 
         actions = QHBoxLayout()
@@ -477,7 +490,8 @@ class MacOSWindow(QMainWindow):
         self.log_area.append(f"{now_label()} {text}")
 
     def choose_source(self):
-        path = QFileDialog.getExistingDirectory(self, "选择微信 xwechat_files 文件夹", self.source_edit.text())
+        start = str(default_xwechat_root()) if self.source_edit.text().strip().upper() == "AUTO" else self.source_edit.text()
+        path = QFileDialog.getExistingDirectory(self, "选择微信 xwechat_files 文件夹", start)
         if path:
             self.source_edit.setText(path)
 
@@ -489,12 +503,13 @@ class MacOSWindow(QMainWindow):
             self.refresh_history()
 
     def validate_inputs(self):
-        source = Path(self.source_edit.text()).expanduser()
+        source_text = self.source_edit.text().strip()
+        source = None if not source_text or source_text.upper() == "AUTO" else Path(source_text).expanduser()
         cutoff = self.cutoff_edit.text().strip()
         if len(cutoff) != 7 or cutoff[4] != "-":
             QMessageBox.warning(self, "月份格式无效", "请使用 YYYY-MM，例如 2025-06。")
             return None
-        if not source.exists():
+        if source is not None and not source.exists():
             QMessageBox.warning(self, "找不到数据目录", f"数据目录不存在：\n{source}")
             return None
         return source, Path(self.output_edit.text()).expanduser(), cutoff
@@ -704,6 +719,9 @@ class MacOSWindow(QMainWindow):
             self.retention_edit.setText("365")
         return {
             "min_age_days": min_age_days,
+            "use_whitelist": self.use_whitelist_check.isChecked(),
+            "whitelist_exts": [part.strip() for part in self.whitelist_exts_edit.text().split(",") if part.strip()],
+            "whitelist_paths": [part.strip() for part in self.whitelist_paths_edit.text().split(",") if part.strip()],
             "categories": {
                 "image": self.clean_images_check.isChecked(),
                 "video": self.clean_videos_check.isChecked(),
