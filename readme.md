@@ -35,7 +35,22 @@ macOS 微信 4.x 的本地文件通常位于：
 ~/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files
 ```
 
-本仓库提供一个独立的 macOS 入口，帮助先看清楚文件、月份、类型、重复大文件和候选清理桶，再决定是否人工归档或移动到系统回收站。图形界面和命令行扫描都会显示带时间戳的进度。
+企业微信 macOS 版常见数据目录也会尝试识别，例如：
+
+```text
+~/Library/Containers/com.tencent.WeWorkMac/Data/Documents/WXWork/Users
+~/Library/Containers/com.tencent.WeWorkMac/Data/Documents/WeWork/Users
+```
+
+本仓库提供一个独立的 macOS 入口，先覆盖原项目能力，再提供 Dashboard 增强：自动识别微信/企业微信账号，按文件类型和保留天数生成清理预览，确认后移动到系统回收站，并支持定期清理检查。图形界面和命令行扫描都会显示带时间戳的进度。
+
+macOS 功能对齐：
+
+- 自动识别账号：支持 macOS 微信 `xwechat_files` 账号目录，并尝试识别企业微信 `WXWork/WeWork` 用户目录；
+- 文件类型选择：清理预览支持图片、视频、普通文件、缓存四类开关；
+- 时间范围：默认保留 365 天以内内容，支持自定义保留天数；
+- 回收站：确认后通过 `send2trash` 移动到系统回收站，不提供永久删除入口；
+- 定期清理：图形界面可开启定期清理检查，到期后先生成预览并要求确认。
 
 安装依赖：
 
@@ -60,7 +75,7 @@ python3 macos_scan.py
 如果要和上一次扫描做增量对比：
 
 ```bash
-python3 macos_scan.py --previous-scan ~/Documents/CleanMyWechat-macOS/reports/macos_wechat_scan_YYYYMMDD_HHMMSS.json
+python3 macos_scan.py --previous-scan ~/Documents/CleanMyWechat-macOS/reports/macos_wechat_scan_YYYYMMDD_HHMMSS_ffffff.json
 ```
 
 本地打包为 `.app`：

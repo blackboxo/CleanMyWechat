@@ -48,6 +48,21 @@ CLEANUP_CATEGORY_LABELS = {
     "msg_video": "视频",
     "msg_attach": "图片/附件",
     "account_cache": "账号缓存",
+    "wxwork_data": "企业微信数据",
+    "image": "图片",
+    "video": "视频",
+    "file": "文件",
+    "cache": "缓存",
+}
+
+DEFAULT_CLEANUP_OPTIONS = {
+    "min_age_days": 365,
+    "categories": {
+        "image": True,
+        "video": True,
+        "file": False,
+        "cache": True,
+    },
 }
 
 
@@ -112,6 +127,9 @@ def common_xwechat_roots(home=None):
         home_path / "Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files",
         home_path / "Library/Containers/com.tencent.xinWeChat/Data/Library/Application Support/com.tencent.xinWeChat",
         home_path / "Documents/xwechat_files",
+        home_path / "Library/Containers/com.tencent.WeWorkMac/Data/Documents/WXWork/Users",
+        home_path / "Library/Containers/com.tencent.WeWorkMac/Data/Documents/WeWork/Users",
+        home_path / "Library/Containers/com.tencent.WeWorkMac/Data/Library/Application Support/WXWork/Data",
     ]
 
 
@@ -129,7 +147,19 @@ def is_account_dir(path):
         names = {child.name for child in Path(path).iterdir()}
     except OSError:
         return False
-    return name.startswith("wxid_") and bool({"msg", "cache", "db_storage"} & names)
+    if name.startswith("wxid_") and bool({"msg", "cache", "db_storage"} & names):
+        return True
+    lowered_parts = {part.lower() for part in Path(path).parts}
+    if {"wxwork", "wework"} & lowered_parts and ("Data" in names or "data" in names):
+        return True
+    return False
+
+
+def account_client_type(account):
+    parts = {part.lower() for part in Path(account).parts}
+    if {"wxwork", "wework"} & parts:
+        return "wxwork"
+    return "wechat"
 
 
 def discover_accounts(xwechat_root):
@@ -234,6 +264,28 @@ def kind_for_path(path):
 
 def category_label(category):
     return CLEANUP_CATEGORY_LABELS.get(category, category)
+
+
+def cleanup_category_for_record(record):
+    source = str(record.get("source", "")).lower()
+    kind = str(record.get("kind", ""))
+    if "cache" in source:
+        return "cache"
+    if kind == "Images":
+        return "image"
+    if kind == "Video":
+        return "video"
+    return "file"
+
+
+def record_age_days(record, now=None):
+    now = now or datetime.now()
+    mtime = record.get("mtime") or ""
+    try:
+        timestamp = datetime.fromisoformat(mtime)
+    except ValueError:
+        return 0
+    return max(0, (now - timestamp).days)
 
 
 def month_dir_sizes(root):
@@ -431,6 +483,7 @@ def scan_macos_wechat(
 
     total_accounts = max(1, len(accounts))
     for account_index, account in enumerate(accounts, 1):
+        client_type = account_client_type(account)
         account_start = 5 + int((account_index - 1) * 58 / total_accounts)
         account_end = 5 + int(account_index * 58 / total_accounts)
         emit_progress(progress_callback, account_start, f"正在扫描账号 {account_index}/{len(accounts)}：{account.name}", "scan")
@@ -439,67 +492,99 @@ def scan_macos_wechat(
             if child.is_dir():
                 sections[child.name] = tree_size(child)
 
-        msg_file = account / "msg/file"
-        msg_video = account / "msg/video"
-        msg_attach = account / "msg/attach"
-        cache = account / "cache"
-        duplicate_roots.extend([msg_file, msg_video, msg_attach])
+        if client_type == "wxwork":
+            data_root = account / "Data"
+            if not data_root.exists():
+                data_root = account / "data"
+            duplicate_roots.append(data_root)
+            records.extend(
+                collect_file_records(
+                    account,
+                    "wxwork/data",
+                    data_root,
+                    progress_callback=progress_callback,
+                    progress_base=account_start + 2,
+                    progress_span=max(1, account_end - account_start - 2),
+                )
+            )
+            months = {"wxwork_data": attach_month_summary(data_root)}
+        else:
+            msg_file = account / "msg/file"
+            msg_video = account / "msg/video"
+            msg_attach = account / "msg/attach"
+            cache = account / "cache"
+            duplicate_roots.extend([msg_file, msg_video, msg_attach])
 
-        span = max(3, account_end - account_start)
-        file_mark = account_start + max(1, span // 3)
-        video_mark = account_start + max(2, span * 2 // 3)
-        records.extend(
-            collect_file_records(
-                account,
-                "msg/file",
-                msg_file,
-                progress_callback=progress_callback,
-                progress_base=account_start + 2,
-                progress_span=max(1, file_mark - account_start - 2),
+            span = max(4, account_end - account_start)
+            file_mark = account_start + max(1, span // 4)
+            video_mark = account_start + max(2, span // 2)
+            attach_mark = account_start + max(3, span * 3 // 4)
+            records.extend(
+                collect_file_records(
+                    account,
+                    "msg/file",
+                    msg_file,
+                    progress_callback=progress_callback,
+                    progress_base=account_start + 2,
+                    progress_span=max(1, file_mark - account_start - 2),
+                )
             )
-        )
-        records.extend(
-            collect_file_records(
-                account,
-                "msg/video",
-                msg_video,
-                progress_callback=progress_callback,
-                progress_base=file_mark,
-                progress_span=max(1, video_mark - file_mark),
+            records.extend(
+                collect_file_records(
+                    account,
+                    "msg/video",
+                    msg_video,
+                    progress_callback=progress_callback,
+                    progress_base=file_mark,
+                    progress_span=max(1, video_mark - file_mark),
+                )
             )
-        )
-        records.extend(
-            collect_file_records(
-                account,
-                "msg/attach",
-                msg_attach,
-                progress_callback=progress_callback,
-                progress_base=video_mark,
-                progress_span=max(1, account_end - video_mark),
+            records.extend(
+                collect_file_records(
+                    account,
+                    "msg/attach",
+                    msg_attach,
+                    progress_callback=progress_callback,
+                    progress_base=video_mark,
+                    progress_span=max(1, attach_mark - video_mark),
+                )
             )
-        )
+            records.extend(
+                collect_file_records(
+                    account,
+                    "cache",
+                    cache,
+                    progress_callback=progress_callback,
+                    progress_base=attach_mark,
+                    progress_span=max(1, account_end - attach_mark),
+                )
+            )
 
-        months = {
-            "msg_file": month_dir_sizes(msg_file),
-            "msg_video": month_dir_sizes(msg_video),
-            "msg_attach": attach_month_summary(msg_attach),
-            "account_cache": month_dir_sizes(cache),
-        }
+            months = {
+                "msg_file": month_dir_sizes(msg_file),
+                "msg_video": month_dir_sizes(msg_video),
+                "msg_attach": attach_month_summary(msg_attach),
+                "account_cache": month_dir_sizes(cache),
+            }
 
         for category, month_sizes in months.items():
             for month, size in month_sizes.items():
                 if month < cutoff_month:
-                    base_path = {
-                        "msg_file": msg_file / month,
-                        "msg_video": msg_video / month,
-                        "msg_attach": msg_attach,
-                        "account_cache": cache / month,
-                    }[category]
+                    if client_type == "wxwork":
+                        base_path = data_root
+                    else:
+                        base_path = {
+                            "msg_file": msg_file / month,
+                            "msg_video": msg_video / month,
+                            "msg_attach": msg_attach,
+                            "account_cache": cache / month,
+                        }[category]
                     note = {
                         "msg_file": "用户可见的接收文件",
                         "msg_video": "用户可见的视频",
                         "msg_attach": "按联系人哈希分组的图片、音频和附件碎片",
                         "account_cache": "账号月份缓存",
+                        "wxwork_data": "企业微信账号数据，按文件修改时间识别旧内容",
                     }[category]
                     candidates.append(
                         CandidateBucket(
@@ -516,6 +601,7 @@ def scan_macos_wechat(
         account_rows.append(
             {
                 "name": account.name,
+                "client_type": client_type,
                 "path": str(account),
                 "size_bytes": tree_size(account),
                 "size": human_size(tree_size(account)),
@@ -698,12 +784,70 @@ def _path_within(path, root):
         return False
 
 
-def build_cleanup_plan(scan_result, candidate_rows=None):
+def _cleanup_options(options):
+    merged = {
+        "min_age_days": DEFAULT_CLEANUP_OPTIONS["min_age_days"],
+        "categories": dict(DEFAULT_CLEANUP_OPTIONS["categories"]),
+    }
+    if options:
+        if "min_age_days" in options:
+            merged["min_age_days"] = int(options.get("min_age_days", merged["min_age_days"]))
+        merged["categories"].update(options.get("categories", {}))
+    return merged
+
+
+def build_cleanup_plan(scan_result, candidate_rows=None, options=None, now=None):
     root = scan_result.get("xwechat_root", "")
-    candidates = candidate_rows if candidate_rows is not None else scan_result.get("candidates", [])
     items = []
     seen = set()
+    now = now or datetime.now()
 
+    if options is not None:
+        merged_options = _cleanup_options(options)
+        min_age_days = max(0, int(merged_options["min_age_days"]))
+        enabled = merged_options["categories"]
+        for record in scan_result.get("files", []):
+            path = Path(record.get("path", "")).expanduser()
+            if not path.exists() or not _path_within(path, root):
+                continue
+            category = cleanup_category_for_record(record)
+            if not enabled.get(category, False):
+                continue
+            age_days = record_age_days(record, now=now)
+            if age_days < min_age_days:
+                continue
+            path_key = str(path)
+            if path_key in seen:
+                continue
+            seen.add(path_key)
+            items.append(
+                {
+                    "path": path_key,
+                    "name": record.get("name", path.name),
+                    "category": category,
+                    "category_label": category_label(category),
+                    "account": record.get("account", ""),
+                    "month": record.get("month", ""),
+                    "age_days": age_days,
+                    "size_bytes": record.get("size_bytes", 0),
+                    "size": record.get("size", human_size(record.get("size_bytes", 0))),
+                    "mtime": record.get("mtime", ""),
+                }
+            )
+        items.sort(key=lambda row: row["size_bytes"], reverse=True)
+        total_size = sum(row["size_bytes"] for row in items)
+        return {
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "source": root,
+            "mode": "type_age",
+            "options": merged_options,
+            "count": len(items),
+            "total_size_bytes": total_size,
+            "total_size": human_size(total_size),
+            "items": items,
+        }
+
+    candidates = candidate_rows if candidate_rows is not None else scan_result.get("candidates", [])
     for candidate in candidates:
         candidate_path = Path(candidate.get("path", "")).expanduser()
         if not candidate_path.exists() or not _path_within(candidate_path, root):
@@ -726,6 +870,7 @@ def build_cleanup_plan(scan_result, candidate_rows=None):
                     "category_label": category_label(candidate.get("category", "")),
                     "account": candidate.get("account", ""),
                     "month": month_from_path(path),
+                    "age_days": record_age_days({"mtime": file_mtime(path)}, now=now),
                     "size_bytes": size,
                     "size": human_size(size),
                     "mtime": file_mtime(path),

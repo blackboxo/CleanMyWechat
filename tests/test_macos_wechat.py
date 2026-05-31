@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from utils.macos_wechat import (
@@ -48,7 +49,7 @@ class MacOSWeChatTest(unittest.TestCase):
         scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
         self.assertTrue(scan["xwechat_root_exists"])
         self.assertEqual(len(scan["accounts"]), 1)
-        self.assertEqual(scan["summary"]["file_count"], 4)
+        self.assertEqual(scan["summary"]["file_count"], 5)
         self.assertEqual(scan["summary"]["by_kind"][0]["name"], "Word")
 
         categories = {(row["category"], row["month"]) for row in scan["candidates"]}
@@ -72,7 +73,7 @@ class MacOSWeChatTest(unittest.TestCase):
         events = []
         scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024, progress_callback=events.append)
 
-        self.assertEqual(scan["summary"]["file_count"], 4)
+        self.assertEqual(scan["summary"]["file_count"], 5)
         self.assertTrue(events)
         self.assertEqual(events[-1]["percent"], 100)
         self.assertTrue(any(event["phase"] == "scan" for event in events))
@@ -116,6 +117,36 @@ class MacOSWeChatTest(unittest.TestCase):
         result = trash_cleanup_plan(plan, trash_func=moved.append)
         self.assertEqual(result["moved_count"], 1)
         self.assertEqual(Path(moved[0]).name, "report.pdf")
+
+    def test_cleanup_plan_matches_original_type_and_age_controls(self):
+        old_time = (datetime.now() - timedelta(days=400)).timestamp()
+        new_time = datetime.now().timestamp()
+        os.utime(self.account / "msg/attach/contact_hash/2024-01/Img/photo.jpg", (old_time, old_time))
+        os.utime(self.account / "msg/video/2024-01/clip.mp4", (old_time, old_time))
+        os.utime(self.account / "msg/file/2025-07/current.docx", (new_time, new_time))
+
+        scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
+        plan = build_cleanup_plan(
+            scan,
+            options={
+                "min_age_days": 365,
+                "categories": {"image": True, "video": False, "file": False, "cache": False},
+            },
+        )
+
+        names = {Path(item["path"]).name for item in plan["items"]}
+        self.assertEqual(names, {"photo.jpg"})
+
+    def test_discovers_wxwork_accounts(self):
+        users_root = Path(self.tmp.name) / "WXWork/Users"
+        account = users_root / "user_123"
+        write_file(account / "Data/File/2024-01/report.pdf", b"work")
+
+        accounts = discover_accounts(users_root)
+        self.assertEqual([path.name for path in accounts], ["user_123"])
+        scan = scan_macos_wechat(users_root, cutoff_month="2025-01", duplicate_threshold=1024)
+        self.assertEqual(scan["accounts"][0]["client_type"], "wxwork")
+        self.assertEqual(scan["summary"]["file_count"], 1)
 
     def test_scan_history_and_incremental_diff(self):
         old_scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)

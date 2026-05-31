@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt, QThread, QUrl, pyqtSignal
 from PyQt5.QtGui import QColor, QDesktopServices
 from PyQt5.QtWidgets import (
     QApplication,
+    QCheckBox,
     QFileDialog,
     QFrame,
     QGraphicsDropShadowEffect,
@@ -287,8 +288,36 @@ class MacOSWindow(QMainWindow):
     def build_candidates_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
+        settings = self.panel()
+        settings_layout = QGridLayout(settings)
+        settings_layout.setContentsMargins(14, 12, 14, 12)
+        self.retention_edit = QLineEdit("365")
+        self.retention_edit.setMaximumWidth(90)
+        self.clean_images_check = QCheckBox("图片")
+        self.clean_images_check.setChecked(True)
+        self.clean_videos_check = QCheckBox("视频")
+        self.clean_videos_check.setChecked(True)
+        self.clean_files_check = QCheckBox("文件")
+        self.clean_files_check.setChecked(False)
+        self.clean_cache_check = QCheckBox("缓存")
+        self.clean_cache_check.setChecked(True)
+        self.auto_clean_check = QCheckBox("定期自动清理")
+        self.auto_days_edit = QLineEdit("30")
+        self.auto_days_edit.setMaximumWidth(80)
+        settings_layout.addWidget(QLabel("保留天数"), 0, 0)
+        settings_layout.addWidget(self.retention_edit, 0, 1)
+        settings_layout.addWidget(self.clean_images_check, 0, 2)
+        settings_layout.addWidget(self.clean_videos_check, 0, 3)
+        settings_layout.addWidget(self.clean_files_check, 0, 4)
+        settings_layout.addWidget(self.clean_cache_check, 0, 5)
+        settings_layout.addWidget(self.auto_clean_check, 1, 0)
+        settings_layout.addWidget(QLabel("清理间隔天数"), 1, 1)
+        settings_layout.addWidget(self.auto_days_edit, 1, 2)
+        settings_layout.addWidget(QLabel("默认和原项目一致：按类型 + 保留天数预览，确认后移入回收站。"), 1, 3, 1, 3)
+        layout.addWidget(settings)
+
         actions = QHBoxLayout()
-        actions.addWidget(self.make_button("全选候选", self.select_all_candidates))
+        actions.addWidget(self.make_button("全选候选桶", self.select_all_candidates))
         actions.addWidget(self.make_button("生成清理预览", self.preview_cleanup, primary=True))
         actions.addWidget(self.make_button("移动所选到回收站", self.execute_cleanup))
         actions.addStretch(1)
@@ -548,6 +577,7 @@ class MacOSWindow(QMainWindow):
             )
         if json_path:
             self.log(f"当前扫描 JSON：{json_path}")
+        self.maybe_prompt_auto_clean()
 
     def populate_overview(self):
         while self.kpi_grid.count():
@@ -666,15 +696,27 @@ class MacOSWindow(QMainWindow):
                     selected.append(candidates[index])
         return selected
 
+    def cleanup_options(self):
+        try:
+            min_age_days = max(0, int(self.retention_edit.text().strip()))
+        except ValueError:
+            min_age_days = 365
+            self.retention_edit.setText("365")
+        return {
+            "min_age_days": min_age_days,
+            "categories": {
+                "image": self.clean_images_check.isChecked(),
+                "video": self.clean_videos_check.isChecked(),
+                "file": self.clean_files_check.isChecked(),
+                "cache": self.clean_cache_check.isChecked(),
+            },
+        }
+
     def preview_cleanup(self):
         if not self.scan_result:
             QMessageBox.information(self, "没有扫描结果", "请先扫描或加载历史 JSON。")
             return
-        selected = self.checked_candidates()
-        if not selected:
-            QMessageBox.information(self, "没有候选", "请先勾选候选桶。")
-            return
-        self.cleanup_plan = build_cleanup_plan(self.scan_result, selected)
+        self.cleanup_plan = build_cleanup_plan(self.scan_result, options=self.cleanup_options())
         self.cleanup_label.setText(f"预览：{self.cleanup_plan['count']} 个文件 / {self.cleanup_plan['total_size']}")
         rows = []
         for index, item in enumerate(self.cleanup_plan["items"][:1000]):
@@ -690,6 +732,53 @@ class MacOSWindow(QMainWindow):
                 self.cleanup_table.setItem(row_index, col, QTableWidgetItem(str(value)))
         self.cleanup_table.resizeColumnsToContents()
         self.tabs.setCurrentIndex(3)
+
+    def auto_state_path(self):
+        return Path(self.output_edit.text()).expanduser() / "reports/macos_auto_clean_state.json"
+
+    def load_auto_state(self):
+        path = self.auto_state_path()
+        if not path.exists():
+            return {}
+        try:
+            import json
+
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    def save_auto_state(self):
+        path = self.auto_state_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        import json
+
+        path.write_text(json.dumps({"last_prompted_at": datetime.now().isoformat(timespec="seconds")}, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def maybe_prompt_auto_clean(self):
+        if not self.scan_result or not self.auto_clean_check.isChecked():
+            return
+        try:
+            interval_days = max(1, int(self.auto_days_edit.text().strip()))
+        except ValueError:
+            interval_days = 30
+            self.auto_days_edit.setText("30")
+        state = self.load_auto_state()
+        last_prompted = state.get("last_prompted_at", "")
+        if last_prompted:
+            try:
+                elapsed = (datetime.now() - datetime.fromisoformat(last_prompted)).days
+                if elapsed < interval_days:
+                    return
+            except ValueError:
+                pass
+        result = QMessageBox.question(
+            self,
+            "定期自动清理",
+            "已到定期清理检查周期。是否按当前类型和保留天数生成清理预览？",
+        )
+        self.save_auto_state()
+        if result == QMessageBox.Yes:
+            self.preview_cleanup()
 
     def selected_cleanup_paths(self):
         if not self.cleanup_plan:
