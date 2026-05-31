@@ -62,10 +62,20 @@ class MacOSWeChatTest(unittest.TestCase):
         self.assertEqual(group["count"], 2)
         self.assertGreater(group["potential_savings_bytes"], 0)
 
+    def test_scan_reports_progress_events(self):
+        events = []
+        scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024, progress_callback=events.append)
+
+        self.assertEqual(scan["summary"]["file_count"], 3)
+        self.assertTrue(events)
+        self.assertEqual(events[-1]["percent"], 100)
+        self.assertTrue(any(event["phase"] == "scan" for event in events))
+        self.assertTrue(any("重复文件检查完成" in event["message"] for event in events))
+
     def test_dashboard_is_self_contained(self):
         scan = scan_macos_wechat(self.root, cutoff_month="2025-01", duplicate_threshold=1024)
         html = render_dashboard_html(scan)
-        self.assertIn("Clean My WeChat macOS Dashboard", html)
+        self.assertIn("微信文件检查 Dashboard", html)
         self.assertIn("const DATA=", html)
         self.assertNotIn("https://", html)
         self.assertNotIn("http://", html)

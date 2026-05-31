@@ -39,6 +39,20 @@ KIND_ORDER = [
 ]
 
 
+def emit_progress(callback, percent, message, phase="scan"):
+    if not callback:
+        return
+    event = {
+        "percent": max(0, min(100, int(percent))),
+        "message": message,
+        "phase": phase,
+    }
+    try:
+        callback(event)
+    except TypeError:
+        callback(event["percent"], event["message"])
+
+
 @dataclass
 class FileRecord:
     name: str
@@ -229,9 +243,11 @@ def attach_month_summary(root):
     return dict(sorted(result.items()))
 
 
-def collect_file_records(account, source_name, root):
+def collect_file_records(account, source_name, root, progress_callback=None, progress_base=0, progress_span=0):
     records = []
+    indexed = 0
     for path in iter_files(root):
+        indexed += 1
         size = file_size(path)
         records.append(
             FileRecord(
@@ -247,6 +263,14 @@ def collect_file_records(account, source_name, root):
                 mtime=file_mtime(path),
             )
         )
+        if indexed % 250 == 0:
+            step = min(progress_span - 1, indexed // 250) if progress_span else 0
+            emit_progress(
+                progress_callback,
+                progress_base + step,
+                f"正在索引 {account.name} / {source_name}：已记录 {indexed} 个文件",
+                "scan",
+            )
     return records
 
 
@@ -258,15 +282,34 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def duplicate_groups(roots, threshold=DEFAULT_DUPLICATE_THRESHOLD):
+def duplicate_groups(
+    roots,
+    threshold=DEFAULT_DUPLICATE_THRESHOLD,
+    progress_callback=None,
+    progress_start=72,
+    progress_end=94,
+):
     by_size = defaultdict(list)
+    inspected = 0
     for root in roots:
         for path in iter_files(root):
+            inspected += 1
             size = file_size(path)
             if size >= threshold:
                 by_size[size].append(path)
+            if inspected % 500 == 0:
+                emit_progress(
+                    progress_callback,
+                    min(progress_start + 6, progress_start + inspected // 500),
+                    f"正在检查重复候选：已查看 {inspected} 个文件",
+                    "duplicates",
+                )
 
     groups = []
+    hash_targets = sum(len(paths) for paths in by_size.values() if len(paths) > 1)
+    hashed = 0
+    if hash_targets:
+        emit_progress(progress_callback, progress_start + 8, f"开始哈希 {hash_targets} 个大文件候选", "duplicates")
     for size, paths in by_size.items():
         if len(paths) < 2:
             continue
@@ -276,6 +319,16 @@ def duplicate_groups(roots, threshold=DEFAULT_DUPLICATE_THRESHOLD):
                 by_hash[sha256(path)].append(path)
             except OSError:
                 continue
+            hashed += 1
+            if hashed % 5 == 0 or hashed == hash_targets:
+                span = max(1, progress_end - progress_start - 10)
+                percent = progress_start + 10 + int(span * hashed / max(1, hash_targets))
+                emit_progress(
+                    progress_callback,
+                    min(progress_end, percent),
+                    f"正在比对重复文件：{hashed}/{hash_targets}",
+                    "duplicates",
+                )
         for digest, matched_paths in by_hash.items():
             if len(matched_paths) < 2:
                 continue
@@ -300,6 +353,7 @@ def duplicate_groups(roots, threshold=DEFAULT_DUPLICATE_THRESHOLD):
                     ],
                 }
             )
+    emit_progress(progress_callback, progress_end, f"重复文件检查完成：发现 {len(groups)} 组", "duplicates")
     return sorted(groups, key=lambda row: row["potential_savings_bytes"], reverse=True)
 
 
@@ -344,15 +398,26 @@ def summarize_records(records):
     }
 
 
-def scan_macos_wechat(xwechat_root=None, cutoff_month=DEFAULT_CUTOFF_MONTH, duplicate_threshold=DEFAULT_DUPLICATE_THRESHOLD):
+def scan_macos_wechat(
+    xwechat_root=None,
+    cutoff_month=DEFAULT_CUTOFF_MONTH,
+    duplicate_threshold=DEFAULT_DUPLICATE_THRESHOLD,
+    progress_callback=None,
+):
     root = Path(xwechat_root).expanduser() if xwechat_root else default_xwechat_root()
+    emit_progress(progress_callback, 1, "准备扫描 macOS 微信数据目录", "prepare")
+    emit_progress(progress_callback, 3, "正在定位微信账号目录", "prepare")
     accounts = discover_accounts(root)
     account_rows = []
     candidates = []
     records = []
     duplicate_roots = []
 
-    for account in accounts:
+    total_accounts = max(1, len(accounts))
+    for account_index, account in enumerate(accounts, 1):
+        account_start = 5 + int((account_index - 1) * 58 / total_accounts)
+        account_end = 5 + int(account_index * 58 / total_accounts)
+        emit_progress(progress_callback, account_start, f"正在扫描账号 {account_index}/{len(accounts)}：{account.name}", "scan")
         sections = {}
         for child in account.iterdir():
             if child.is_dir():
@@ -364,8 +429,27 @@ def scan_macos_wechat(xwechat_root=None, cutoff_month=DEFAULT_CUTOFF_MONTH, dupl
         cache = account / "cache"
         duplicate_roots.extend([msg_file, msg_video, msg_attach])
 
-        records.extend(collect_file_records(account, "msg/file", msg_file))
-        records.extend(collect_file_records(account, "msg/video", msg_video))
+        record_midpoint = account_start + max(1, (account_end - account_start) // 2)
+        records.extend(
+            collect_file_records(
+                account,
+                "msg/file",
+                msg_file,
+                progress_callback=progress_callback,
+                progress_base=account_start + 2,
+                progress_span=max(1, record_midpoint - account_start - 2),
+            )
+        )
+        records.extend(
+            collect_file_records(
+                account,
+                "msg/video",
+                msg_video,
+                progress_callback=progress_callback,
+                progress_base=record_midpoint,
+                progress_span=max(1, account_end - record_midpoint),
+            )
+        )
 
         months = {
             "msg_file": month_dir_sizes(msg_file),
@@ -384,10 +468,10 @@ def scan_macos_wechat(xwechat_root=None, cutoff_month=DEFAULT_CUTOFF_MONTH, dupl
                         "account_cache": cache / month,
                     }[category]
                     note = {
-                        "msg_file": "user-visible received files",
-                        "msg_video": "user-visible videos",
-                        "msg_attach": "images/audio/attachment fragments grouped by contact hash",
-                        "account_cache": "account month cache",
+                        "msg_file": "用户可见的接收文件",
+                        "msg_video": "用户可见的视频",
+                        "msg_attach": "按联系人哈希分组的图片、音频和附件碎片",
+                        "account_cache": "账号月份缓存",
                     }[category]
                     candidates.append(
                         CandidateBucket(
@@ -420,16 +504,26 @@ def scan_macos_wechat(xwechat_root=None, cutoff_month=DEFAULT_CUTOFF_MONTH, dupl
                 },
             }
         )
+        emit_progress(progress_callback, account_end, f"账号扫描完成：{account.name}", "scan")
 
+    emit_progress(progress_callback, 66, "正在汇总文件类型、月份和账号统计", "summary")
     top_files = sorted([asdict(record) for record in records], key=lambda row: row["size_bytes"], reverse=True)[:200]
-    duplicate_data = duplicate_groups(duplicate_roots, threshold=duplicate_threshold)
+    duplicate_data = duplicate_groups(
+        duplicate_roots,
+        threshold=duplicate_threshold,
+        progress_callback=progress_callback,
+        progress_start=72,
+        progress_end=94,
+    )
     duplicate_savings = sum(group["potential_savings_bytes"] for group in duplicate_data)
     summary = summarize_records(records)
     summary["duplicate_group_count"] = len(duplicate_data)
     summary["duplicate_potential_savings_bytes"] = duplicate_savings
     summary["duplicate_potential_savings"] = human_size(duplicate_savings)
 
+    emit_progress(progress_callback, 96, "正在计算 xwechat_files 总体占用", "summary")
     root_size = tree_size(root)
+    emit_progress(progress_callback, 100, "扫描完成", "done")
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "platform": "macOS",
@@ -541,13 +635,13 @@ def create_symlink_view(scan_result, output_dir):
     readme.write_text(
         "\n".join(
             [
-                "# Clean My WeChat macOS Organized View",
+                "# Clean My WeChat macOS 整理视图",
                 "",
-                "This folder only contains symlinks to original WeChat files.",
-                "Deleting a symlink here does not delete the original file.",
+                "此文件夹只包含指向微信原文件的符号链接。",
+                "删除这里的符号链接不会删除微信原文件。",
                 "",
-                f"Generated: {datetime.now().isoformat(timespec='seconds')}",
-                f"Source: {scan_result['xwechat_root']}",
+                f"生成时间：{datetime.now().isoformat(timespec='seconds')}",
+                f"来源：{scan_result['xwechat_root']}",
             ]
         ),
         encoding="utf-8",
@@ -566,62 +660,91 @@ def render_dashboard_html(scan_result):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Clean My WeChat macOS Dashboard</title>
+  <title>微信文件检查 Dashboard</title>
   <style>
     :root {{
-      --bg:#f5f6f7; --panel:#fff; --ink:#20242a; --muted:#66717d;
-      --line:#d8dde3; --teal:#087f8c; --green:#3f7d4a; --amber:#a85d00;
-      font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --bg:#edf3f6; --glass:rgba(255,255,255,.70); --glass-strong:rgba(255,255,255,.86);
+      --ink:#17212b; --muted:#66727e; --line:rgba(114,133,151,.28);
+      --teal:#0b7f86; --green:#3f7f5a; --amber:#b06218; --blue:#315f9f;
+      font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Segoe UI",sans-serif;
     }}
     * {{ box-sizing:border-box; }}
-    body {{ margin:0; background:var(--bg); color:var(--ink); font-size:14px; letter-spacing:0; }}
-    header {{ position:sticky; top:0; z-index:10; background:var(--panel); border-bottom:1px solid var(--line); }}
-    .top {{ max-width:1440px; margin:0 auto; padding:14px 20px; display:flex; justify-content:space-between; gap:14px; align-items:center; }}
-    h1 {{ margin:0; font-size:20px; }}
+    body {{
+      margin:0; color:var(--ink); font-size:14px; letter-spacing:0; min-height:100vh;
+      background:linear-gradient(135deg,#f7fbfb 0%,#e5eef4 42%,#f5f8f2 100%);
+    }}
+    header {{
+      position:sticky; top:0; z-index:10;
+      background:rgba(247,250,252,.76); border-bottom:1px solid rgba(255,255,255,.72);
+      backdrop-filter:blur(22px) saturate(1.25); -webkit-backdrop-filter:blur(22px) saturate(1.25);
+      box-shadow:0 10px 30px rgba(38,58,76,.08);
+    }}
+    .top {{ max-width:1440px; margin:0 auto; padding:16px 20px; display:flex; justify-content:space-between; gap:14px; align-items:center; }}
+    h1 {{ margin:0; font-size:20px; font-weight:850; }}
     .meta {{ margin-top:4px; color:var(--muted); font-size:12px; }}
     main {{ max-width:1440px; margin:0 auto; padding:18px 20px 30px; }}
-    .tabs {{ display:inline-grid; grid-auto-flow:column; gap:2px; padding:3px; background:#edf1f4; border:1px solid var(--line); border-radius:8px; }}
+    .tabs {{
+      display:inline-grid; grid-auto-flow:column; gap:2px; padding:3px;
+      background:rgba(255,255,255,.46); border:1px solid rgba(255,255,255,.74); border-radius:8px;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 28px rgba(35,55,72,.08);
+    }}
     button {{ font:inherit; }}
-    .tabs button {{ border:0; background:transparent; padding:8px 12px; border-radius:6px; font-weight:700; color:var(--muted); cursor:pointer; }}
-    .tabs button.active {{ background:#fff; color:var(--ink); box-shadow:0 1px 6px rgba(0,0,0,.1); }}
+    .tabs button {{ border:0; background:transparent; padding:8px 12px; border-radius:6px; font-weight:800; color:var(--muted); cursor:pointer; transition:.18s ease; }}
+    .tabs button:hover {{ color:var(--ink); }}
+    .tabs button.active {{ background:var(--glass-strong); color:var(--ink); box-shadow:0 10px 24px rgba(48,70,90,.13),inset 0 1px 0 #fff; }}
     .kpis {{ display:grid; grid-template-columns:repeat(6,minmax(120px,1fr)); gap:10px; margin-bottom:14px; }}
-    .kpi {{ background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px; min-height:76px; }}
+    .kpi {{
+      background:var(--glass); border:1px solid rgba(255,255,255,.78); border-radius:8px; padding:12px; min-height:76px;
+      box-shadow:0 18px 40px rgba(38,58,76,.10),inset 0 1px 0 rgba(255,255,255,.82);
+      backdrop-filter:blur(18px) saturate(1.18); -webkit-backdrop-filter:blur(18px) saturate(1.18);
+    }}
     .label {{ color:var(--muted); font-size:12px; margin-bottom:8px; }}
-    .value {{ font-weight:800; font-size:22px; }}
+    .value {{ font-weight:850; font-size:22px; }}
     .sub {{ color:var(--muted); font-size:12px; margin-top:5px; }}
-    .panel {{ background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-bottom:14px; }}
-    .panel-head {{ padding:12px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; align-items:center; }}
-    .title {{ font-weight:800; }}
+    .panel {{
+      background:var(--glass); border:1px solid rgba(255,255,255,.78); border-radius:8px; overflow:hidden; margin-bottom:14px;
+      box-shadow:0 20px 45px rgba(39,57,74,.11),inset 0 1px 0 rgba(255,255,255,.86);
+      backdrop-filter:blur(20px) saturate(1.18); -webkit-backdrop-filter:blur(20px) saturate(1.18);
+    }}
+    .panel-head {{ padding:12px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; align-items:center; background:rgba(255,255,255,.34); }}
+    .title {{ font-weight:850; }}
     .grid {{ display:grid; grid-template-columns:minmax(0,1fr) minmax(340px,.75fr); gap:14px; }}
     .body {{ padding:12px 14px; }}
     .bars {{ display:grid; gap:9px; }}
     .bar {{ display:grid; grid-template-columns:minmax(90px,170px) 1fr 84px; gap:10px; align-items:center; }}
     .bar-name {{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:700; }}
-    .track {{ height:10px; background:#edf0f2; border-radius:99px; overflow:hidden; }}
-    .fill {{ height:100%; background:linear-gradient(90deg,var(--teal),var(--green)); }}
+    .track {{ height:10px; background:rgba(119,139,157,.18); border-radius:99px; overflow:hidden; box-shadow:inset 0 1px 3px rgba(36,54,72,.16); }}
+    .fill {{ height:100%; background:linear-gradient(90deg,var(--teal),var(--green) 55%,var(--amber)); box-shadow:0 0 18px rgba(11,127,134,.28); }}
     .bar-size,.num {{ text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }}
-    .toolbar {{ display:grid; grid-template-columns:minmax(240px,1.5fr) repeat(4,minmax(120px,.7fr)); gap:8px; padding:12px 14px; border-bottom:1px solid var(--line); background:#fbfcfd; }}
-    input,select {{ min-height:36px; width:100%; border:1px solid #aeb7c2; border-radius:6px; padding:7px 9px; background:#fff; color:var(--ink); font:inherit; }}
+    .toolbar {{ display:grid; grid-template-columns:minmax(240px,1.5fr) repeat(4,minmax(120px,.7fr)); gap:8px; padding:12px 14px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.32); }}
+    input,select {{
+      min-height:36px; width:100%; border:1px solid rgba(104,122,141,.32); border-radius:6px; padding:7px 9px;
+      background:rgba(255,255,255,.78); color:var(--ink); font:inherit; outline:none;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.88);
+    }}
+    input:focus,select:focus {{ border-color:rgba(11,127,134,.62); box-shadow:0 0 0 3px rgba(11,127,134,.13); }}
     table {{ width:100%; border-collapse:collapse; table-layout:fixed; }}
     th,td {{ padding:9px 10px; border-bottom:1px solid var(--line); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }}
-    th {{ color:var(--muted); font-size:12px; text-align:left; background:#fbfcfd; position:sticky; top:0; }}
+    th {{ color:var(--muted); font-size:12px; text-align:left; background:rgba(255,255,255,.52); position:sticky; top:0; backdrop-filter:blur(12px); }}
+    tr:hover td {{ background:rgba(255,255,255,.42); }}
     .table-wrap {{ max-height:650px; overflow:auto; }}
-    .chip {{ display:inline-flex; border:1px solid var(--line); border-radius:99px; padding:2px 8px; color:var(--muted); font-size:12px; font-weight:700; }}
+    .chip {{ display:inline-flex; border:1px solid var(--line); border-radius:99px; padding:2px 8px; color:var(--muted); font-size:12px; font-weight:750; background:rgba(255,255,255,.45); }}
     .chip.teal {{ color:var(--teal); border-color:rgba(8,127,140,.25); background:rgba(8,127,140,.08); }}
     .path {{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--muted); font-size:12px; }}
     .link {{ color:var(--teal); text-decoration:none; font-weight:700; margin-right:8px; }}
     .pager {{ display:flex; justify-content:space-between; padding:11px 14px; color:var(--muted); }}
-    .text-btn {{ border:1px solid var(--line); background:#fff; border-radius:6px; padding:6px 10px; font-weight:700; cursor:pointer; }}
+    .text-btn {{ border:1px solid var(--line); background:rgba(255,255,255,.68); border-radius:6px; padding:6px 10px; font-weight:750; cursor:pointer; }}
+    .text-btn:hover {{ background:#fff; }}
     .view {{ display:none; }} .view.active {{ display:block; }}
-    .dup {{ border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden; }}
-    .dup-head {{ padding:10px 12px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; }}
+    .dup {{ border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden; background:rgba(255,255,255,.38); }}
+    .dup-head {{ padding:10px 12px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; background:rgba(255,255,255,.30); }}
     .dup-files {{ padding:8px 12px 12px; display:grid; gap:6px; }}
     @media (max-width:1000px) {{ .kpis {{ grid-template-columns:repeat(3,1fr); }} .grid {{ grid-template-columns:1fr; }} .toolbar {{ grid-template-columns:1fr 1fr; }} }}
     @media (max-width:680px) {{ .top {{ display:block; }} .tabs {{ margin-top:10px; grid-template-columns:repeat(2,1fr); grid-auto-flow:row; width:100%; }} .kpis {{ grid-template-columns:repeat(2,1fr); }} .toolbar {{ grid-template-columns:1fr; }} .bar {{ grid-template-columns:1fr; }} .bar-size {{ text-align:left; }} }}
   </style>
 </head>
 <body>
-  <header><div class="top"><div><h1>Clean My WeChat macOS Dashboard</h1><div class="meta" id="meta"></div></div><nav class="tabs"><button class="active" data-tab="overview">概览</button><button data-tab="files">文件</button><button data-tab="duplicates">重复</button><button data-tab="candidates">候选</button></nav></div></header>
+  <header><div class="top"><div><h1>微信文件检查 Dashboard</h1><div class="meta" id="meta"></div></div><nav class="tabs"><button class="active" data-tab="overview">概览</button><button data-tab="files">文件</button><button data-tab="duplicates">重复</button><button data-tab="candidates">候选</button></nav></div></header>
   <main>
     <section class="kpis" id="kpis"></section>
     <section id="overview" class="view active"><div class="grid"><div class="panel"><div class="panel-head"><div class="title">类型分布</div></div><div class="body"><div class="bars" id="kindBars"></div></div></div><div class="panel"><div class="panel-head"><div class="title">月份分布</div></div><div class="body"><div class="bars" id="monthBars"></div></div></div></div><div class="panel"><div class="panel-head"><div class="title">最大文件</div></div><div class="table-wrap"><table id="topTable"></table></div></div></section>
@@ -634,18 +757,20 @@ def render_dashboard_html(scan_result):
     const state={{page:1,pageSize:120}};
     const fmt=new Intl.NumberFormat('zh-CN');
     const $=id=>document.getElementById(id);
+    const labelMap={{msg_file:'接收文件',msg_video:'视频',msg_attach:'附件碎片',account_cache:'账号缓存'}};
+    const zh=v=>labelMap[v]||v;
     const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({{"&":"&amp;","<":"&lt;",">":"&gt;","\\\"":"&quot;","'":"&#39;"}}[c]));
     const href=p=>'file://'+encodeURI(p).replace(/#/g,'%23');
     function table(el,heads,rows,widths=[]){{const cg=widths.length?'<colgroup>'+widths.map(w=>`<col style="width:${{w}}">`).join('')+'</colgroup>':'';el.innerHTML=cg+'<thead><tr>'+heads.map(h=>`<th>${{h}}</th>`).join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(c=>`<td>${{c}}</td>`).join('')+'</tr>').join('')+'</tbody>';}}
     function bars(el,rows,n){{const top=rows.slice(0,n),max=Math.max(...top.map(r=>r.size_bytes),1);el.innerHTML=top.map(r=>`<div class="bar"><div class="bar-name" title="${{esc(r.name)}}">${{esc(r.name)}}</div><div class="track"><div class="fill" style="width:${{Math.max(2,r.size_bytes/max*100)}}%"></div></div><div class="bar-size">${{r.size}}</div></div>`).join('');}}
     function actions(p){{return `<a class="link" href="${{href(p)}}">打开</a><a class="link" href="#" onclick="navigator.clipboard&&navigator.clipboard.writeText(${{JSON.stringify(p)}});return false;">复制</a>`;}}
-    function init(){{$('meta').textContent=`生成 ${{DATA.generated_at}} · ${{DATA.xwechat_root}}`; $('kpis').innerHTML=[['xwechat_files',DATA.xwechat_root_size],['可见文件',DATA.summary.total_size,fmt.format(DATA.summary.file_count)+' 个'],['100MB+ 文件',fmt.format(DATA.summary.large_file_count)],['重复组',fmt.format(DATA.summary.duplicate_group_count),DATA.summary.duplicate_potential_savings],['候选桶',fmt.format(DATA.candidates.length)],['账号',fmt.format(DATA.accounts.length)]].map(i=>`<div class="kpi"><div class="label">${{i[0]}}</div><div class="value">${{i[1]}}</div>${{i[2]?`<div class="sub">${{i[2]}}</div>`:''}}</div>`).join('');bars($('kindBars'),DATA.summary.by_kind,12);bars($('monthBars'),DATA.summary.by_month,18);renderTop();initFilters();renderFiles();renderDup();renderCandidates();document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.tab).classList.add('active');}});}}
+    function init(){{$('meta').textContent=`生成 ${{DATA.generated_at}} · ${{DATA.xwechat_root}}`; $('kpis').innerHTML=[['数据目录',DATA.xwechat_root_size],['可见文件',DATA.summary.total_size,fmt.format(DATA.summary.file_count)+' 个'],['100MB+ 文件',fmt.format(DATA.summary.large_file_count)],['重复组',fmt.format(DATA.summary.duplicate_group_count),DATA.summary.duplicate_potential_savings],['候选桶',fmt.format(DATA.candidates.length)],['账号',fmt.format(DATA.accounts.length)]].map(i=>`<div class="kpi"><div class="label">${{i[0]}}</div><div class="value">${{i[1]}}</div>${{i[2]?`<div class="sub">${{i[2]}}</div>`:''}}</div>`).join('');bars($('kindBars'),DATA.summary.by_kind,12);bars($('monthBars'),DATA.summary.by_month,18);renderTop();initFilters();renderFiles();renderDup();renderCandidates();document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.tab).classList.add('active');}});}}
     function renderTop(){{table($('topTable'),['文件','来源','月份','大小','操作'],DATA.top_files.slice(0,60).map(r=>[`<span title="${{esc(r.path)}}">${{esc(r.name)}}</span>`,esc(r.source),esc(r.month),`<span class="num">${{r.size}}</span>`,actions(r.path)]),['44%','12%','10%','12%','110px']);}}
     function initFilters(){{$('kind').innerHTML='<option value="">全部类型</option>'+DATA.summary.by_kind.map(r=>`<option>${{esc(r.name)}}</option>`).join('');$('month').innerHTML='<option value="">全部月份</option>'+DATA.summary.by_month.map(r=>r.name).sort().reverse().map(m=>`<option>${{esc(m)}}</option>`).join('');['search','kind','month','size','sort'].forEach(id=>$(id).oninput=()=>{{state.page=1;renderFiles();}});$('prev').onclick=()=>{{state.page=Math.max(1,state.page-1);renderFiles();}};$('next').onclick=()=>{{state.page+=1;renderFiles();}};}}
     function filtered(){{let rows=DATA.files.filter(r=>(!$('kind').value||r.kind===$('kind').value)&&(!$('month').value||r.month===$('month').value)&&r.size_bytes>=Number($('size').value)&&(!$('search').value||(r.name+' '+r.path).toLowerCase().includes($('search').value.toLowerCase())));const s=$('sort').value,coll=new Intl.Collator('zh-CN',{{numeric:true}});rows.sort((a,b)=>s==='size'?b.size_bytes-a.size_bytes:s==='mtime'?String(b.mtime).localeCompare(String(a.mtime)):s==='month'?String(b.month).localeCompare(String(a.month)):coll.compare(a.name,b.name));return rows;}}
     function renderFiles(){{const rows=filtered(),pages=Math.max(1,Math.ceil(rows.length/state.pageSize));state.page=Math.min(state.page,pages);const page=rows.slice((state.page-1)*state.pageSize,state.page*state.pageSize);table($('fileTable'),['文件','类型','月份','大小','路径','操作'],page.map(r=>[`<span title="${{esc(r.name)}}">${{esc(r.name)}}</span>`,`<span class="chip teal">${{esc(r.kind)}}</span>`,esc(r.month),`<span class="num">${{r.size}}</span>`,`<span class="path" title="${{esc(r.path)}}">${{esc(r.path)}}</span>`,actions(r.path)]),['26%','10%','9%','9%','36%','110px']);$('count').textContent=`${{fmt.format(rows.length)}} 个结果 · 第 ${{state.page}} / ${{pages}} 页`;$('prev').disabled=state.page<=1;$('next').disabled=state.page>=pages;}}
     function renderDup(){{$('dupMeta').textContent=`${{DATA.duplicates.length}} 组 · 理论节省 ${{DATA.summary.duplicate_potential_savings}}`;$('dupList').innerHTML=DATA.duplicates.map((g,i)=>`<article class="dup"><div class="dup-head"><strong>#${{i+1}} · ${{g.potential_savings}}</strong><span class="chip">${{g.count}} 份</span></div><div class="dup-files">${{g.files.map(f=>`<div><span class="chip">${{esc(f.month)}}</span> <span class="path">${{esc(f.path)}}</span> ${{actions(f.path)}}</div>`).join('')}}</div></article>`).join('');}}
-    function renderCandidates(){{table($('candidateTable'),['类别','账号','月份','大小','说明','路径'],DATA.candidates.slice(0,300).map(r=>[`<span class="chip">${{esc(r.category)}}</span>`,esc(r.account),esc(r.month),`<span class="num">${{r.size}}</span>`,esc(r.note),`<span class="path">${{esc(r.path)}}</span>`]),['12%','18%','8%','10%','22%','30%']);}}
+    function renderCandidates(){{table($('candidateTable'),['类别','账号','月份','大小','说明','路径'],DATA.candidates.slice(0,300).map(r=>[`<span class="chip">${{esc(zh(r.category))}}</span>`,esc(r.account),esc(r.month),`<span class="num">${{r.size}}</span>`,esc(r.note),`<span class="path">${{esc(r.path)}}</span>`]),['12%','18%','8%','10%','22%','30%']);}}
     init();
   </script>
 </body>
@@ -661,25 +786,25 @@ def write_dashboard(scan_result, output_path):
 
 def render_markdown_summary(scan_result):
     lines = [
-        "# Clean My WeChat macOS Scan Report",
+        "# Clean My WeChat macOS 扫描报告",
         "",
-        f"- Generated: {scan_result['generated_at']}",
-        f"- Source: `{scan_result['xwechat_root']}`",
-        f"- Source size: {scan_result['xwechat_root_size']}",
-        f"- Visible files indexed: {scan_result['summary']['file_count']} ({scan_result['summary']['total_size']})",
-        f"- Duplicate groups: {scan_result['summary']['duplicate_group_count']} ({scan_result['summary']['duplicate_potential_savings']} potential savings)",
+        f"- 生成时间：{scan_result['generated_at']}",
+        f"- 数据目录：`{scan_result['xwechat_root']}`",
+        f"- 目录占用：{scan_result['xwechat_root_size']}",
+        f"- 已索引可见文件：{scan_result['summary']['file_count']}（{scan_result['summary']['total_size']}）",
+        f"- 重复大文件组：{scan_result['summary']['duplicate_group_count']}（理论可节省 {scan_result['summary']['duplicate_potential_savings']}）",
         "",
-        "## Biggest Kinds",
+        "## 最大文件类型",
         "",
-        "| Kind | Count | Size |",
+        "| 类型 | 数量 | 大小 |",
         "| --- | ---: | ---: |",
     ]
     for row in scan_result["summary"]["by_kind"][:20]:
         lines.append(f"| {row['name']} | {row['count']} | {row['size']} |")
-    lines.extend(["", "## Biggest Months", "", "| Month | Count | Size |", "| --- | ---: | ---: |"])
+    lines.extend(["", "## 最大月份", "", "| 月份 | 数量 | 大小 |", "| --- | ---: | ---: |"])
     for row in scan_result["summary"]["by_month"][:30]:
         lines.append(f"| {row['name']} | {row['count']} | {row['size']} |")
-    lines.extend(["", "## Candidate Buckets", "", "| Category | Account | Month | Size | Note |", "| --- | --- | --- | ---: | --- |"])
+    lines.extend(["", "## 旧文件候选桶", "", "| 类别 | 账号 | 月份 | 大小 | 说明 |", "| --- | --- | --- | ---: | --- |"])
     for row in scan_result["candidates"][:80]:
         lines.append(f"| {row['category']} | {row['account']} | {row['month']} | {row['size']} | {row['note']} |")
     return "\n".join(lines)

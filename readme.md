@@ -35,7 +35,7 @@ macOS 微信 4.x 的本地文件通常位于：
 ~/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files
 ```
 
-本仓库提供一个独立的 macOS 只读入口，帮助先看清楚文件、月份、类型、重复大文件和候选清理桶，再决定是否人工归档。
+本仓库提供一个独立的 macOS 只读入口，帮助先看清楚文件、月份、类型、重复大文件和候选清理桶，再决定是否人工归档。图形界面和命令行扫描都会显示进度。
 
 安装依赖：
 

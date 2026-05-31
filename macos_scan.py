@@ -13,38 +13,53 @@ from utils.macos_wechat import (
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Read-only macOS WeChat scanner and dashboard generator.")
-    parser.add_argument("--source", default=str(default_xwechat_root()), help="Path to macOS xwechat_files.")
-    parser.add_argument("--output", default=str(Path.home() / "Documents/CleanMyWechat-macOS"), help="Output folder.")
-    parser.add_argument("--cutoff-month", default=DEFAULT_CUTOFF_MONTH, help="YYYY-MM; earlier months are shown as candidates.")
-    parser.add_argument("--no-view", action="store_true", help="Skip symlink organized view generation.")
+    parser = argparse.ArgumentParser(description="只读扫描 macOS 微信文件，并生成本地 Dashboard。")
+    parser.add_argument("--source", default=str(default_xwechat_root()), help="macOS xwechat_files 路径。")
+    parser.add_argument("--output", default=str(Path.home() / "Documents/CleanMyWechat-macOS"), help="输出目录。")
+    parser.add_argument("--cutoff-month", default=DEFAULT_CUTOFF_MONTH, help="YYYY-MM；早于该月份的内容会列为候选桶。")
+    parser.add_argument("--no-view", action="store_true", help="跳过符号链接整理视图。")
+    parser.add_argument("--quiet", action="store_true", help="不显示扫描进度。")
     return parser.parse_args()
+
+
+def print_progress(event):
+    percent = min(90, max(1, 1 + int(event["percent"] * 0.89)))
+    print(f"[{percent:3d}%] {event['message']}", flush=True)
 
 
 def main():
     args = parse_args()
     output = Path(args.output).expanduser()
-    scan = scan_macos_wechat(args.source, cutoff_month=args.cutoff_month)
+    scan = scan_macos_wechat(args.source, cutoff_month=args.cutoff_month, progress_callback=None if args.quiet else print_progress)
     reports_dir = output / "reports"
     dashboard_path = output / "dashboard/wechat_dashboard.html"
     summary_path = reports_dir / "macos_wechat_summary.md"
 
+    if not args.quiet:
+        print("[ 92%] 正在写入报告", flush=True)
     outputs = write_scan_outputs(scan, reports_dir)
     write_markdown_summary(scan, summary_path)
+
+    if not args.quiet:
+        print("[ 95%] 正在生成 Dashboard", flush=True)
     write_dashboard(scan, dashboard_path)
 
     view_result = None
     if not args.no_view:
+        if not args.quiet:
+            print("[ 98%] 正在创建整理视图", flush=True)
         view_result = create_symlink_view(scan, output / "organized_view")
 
-    print(f"Dashboard: {dashboard_path}")
-    print(f"Summary: {summary_path}")
-    print(f"JSON: {outputs['json']}")
-    print(f"Files indexed: {scan['summary']['file_count']}")
-    print(f"Duplicate groups: {scan['summary']['duplicate_group_count']}")
-    print(f"Potential duplicate savings: {scan['summary']['duplicate_potential_savings']}")
+    if not args.quiet:
+        print("[100%] 完成", flush=True)
+    print(f"Dashboard：{dashboard_path}")
+    print(f"摘要：{summary_path}")
+    print(f"JSON：{outputs['json']}")
+    print(f"已索引文件：{scan['summary']['file_count']}")
+    print(f"重复大文件组：{scan['summary']['duplicate_group_count']}")
+    print(f"理论重复节省：{scan['summary']['duplicate_potential_savings']}")
     if view_result:
-        print(f"Organized view: {view_result['root']}")
+        print(f"整理视图：{view_result['root']}")
 
 
 if __name__ == "__main__":
