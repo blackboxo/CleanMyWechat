@@ -1,4 +1,4 @@
-# Clean My PC WeChat
+# Clean My WeChat
 
 ![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/banner.png)
 
@@ -10,15 +10,22 @@
 
 该工具不会删除文字的聊天记录，请放心使用。请给个 **Star** 吧，非常感谢！
 
-**现已经支持 Windows 系统中的所有微信版本，包含最新版的微信 4.0+ 和企业微信。**
+**现已经支持 Windows 和 Mac 系统中的所有微信版本，包含最新版的微信 4.0+ 和企业微信。**
 
-> macOS 支持仍处于实验阶段：当前提供扫描统计、历史结果加载、增量对比、重复大文件检查、符号链接整理视图、清理前预览、可选直接删除、定期清理和 LaunchAgent 自启动。执行清理时默认移动到系统回收站，只有主动勾选“直接删除”才会跳过回收站。
+Windows 版本：
 
 [国内地址 - 点击下载](
 https://wwbie.lanzoue.com/iHgXp3ql84ng)
 
 [Github Release - 点击下载](
 https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.zip)
+
+macOS 版本：
+
+[国内地址 - 点击下载](
+https://wwbie.lanzoue.com/ixTMX3r1jomh)
+
+[Github Release - 点击下载](https://github.com/blackboxo/CleanMyWechat/releases/download/v3.0_mac/CleanMyWechat.dmg)
 
 ## 特性
 1. 自动识别所有微信及企业微信账号；
@@ -27,92 +34,9 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.
 4. 删除后的文件放置在回收站中，检查后自行清空，防止删错需要的文件；
 5. 支持定期自动清理；
 
-## macOS 实验版
-
-macOS 微信 4.x 的本地文件通常位于：
-
-```text
-~/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files
-```
-
-企业微信 macOS 版常见数据目录也会尝试识别，例如：
-
-```text
-~/Library/Containers/com.tencent.WeWorkMac/Data/Documents/WXWork/Users
-~/Library/Containers/com.tencent.WeWorkMac/Data/Documents/WeWork/Users
-```
-
-本仓库提供一个独立的 macOS 入口，先对齐原项目清理流程，再提供 Dashboard 增强：自动识别微信/企业微信账号，按文件类型和保留天数生成清理预览，确认后移动到系统回收站或按配置直接删除，并支持定期清理检查、自启动和扫描历史。图形界面和命令行扫描都会显示带时间戳的进度。
-
-macOS 功能对齐：
-
-- 自动识别账号：默认 `AUTO` 扫描多个 macOS 微信 `xwechat_files` 常见根目录，并尝试识别企业微信 `WXWork/WeWork` 用户目录；
-- 文件类型选择：清理预览支持图片、视频、普通文件、缓存四类开关，并覆盖 `cache`、`temp`、`apm_record`、`business/xweb`、`Applet`、`WMPF` 等常见缓存目录；
-- 时间范围：默认保留 365 天以内内容，支持自定义保留天数；
-- 回收站/直接删除：默认通过 `send2trash` 移动到系统回收站，也可主动勾选“直接删除”跳过回收站；
-- 白名单：默认跳过 Office/PDF 等文档扩展名，可在图形界面调整白名单扩展名和路径；
-- 定期清理：图形界面可开启定期清理检查，到期后默认先生成预览并要求确认；关闭“清理前确认”后会按当前规则自动执行；
-- 开机自启动：图形界面可写入 macOS LaunchAgent，下次登录时以 `--startup-auto-clean` 启动并执行定期清理检查。
-
-安装依赖：
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-运行图形界面：
-
-```bash
-python3 macos_app.py
-```
-
-或直接生成 Dashboard：
-
-```bash
-python3 macos_scan.py
-```
-
-如果要和上一次扫描做增量对比：
-
-```bash
-python3 macos_scan.py --previous-scan ~/Documents/CleanMyWechat-macOS/reports/macos_wechat_scan_YYYYMMDD_HHMMSS_ffffff.json
-```
-
-本地打包为 `.app`：
-
-```bash
-pyinstaller --windowed --name CleanMyWechat-macOS macos_app.py
-```
-
-生成结果默认位于：
-
-```text
-~/Documents/CleanMyWechat-macOS
-```
-
-其中 `macos_scan.py` 默认使用 `--source AUTO` 自动识别常见目录，也可以手动指定 `--source /path/to/xwechat_files`。
-
-包含：
-
-- `dashboard/wechat_dashboard.html`：本地静态 Dashboard，可按类型、月份、大小搜索和筛选；
-- `organized_view/`：按月份、类型、大文件创建的符号链接视图；
-- `reports/`：JSON、CSV、Markdown 扫描报告，以及 `scan_history.json` 历史索引。
-
-安全说明：
-
-- 扫描、Dashboard、历史加载和整理视图不会删除、不移动、不改名任何微信文件；
-- 图形界面的“候选清理”默认需要先生成预览并再次确认，确认后移动到系统回收站；
-- “直接删除”和“关闭清理前确认”均需用户主动勾选；启用后会改变微信原目录且可能无法从系统废纸篓恢复；
-- “开机自启动”会写入 `~/Library/LaunchAgents/com.cleanmywechat.macos.plist`，关闭后会移除该文件；
-- `organized_view/` 只包含符号链接，删除链接不会删除微信原文件；
-- `db_storage`、`config`、`business/favorite` 等运行数据只统计，不纳入整理视图；
-- 如需释放空间，建议先从 Dashboard 或候选清理预览中确认大文件和重复文件。
-
 ## 运行截图
 
-![Clean My Wechat 首页](images/README-merge.png)
+![Clean My WeChat 首页](images/README-merge.png)
 
 ## 微信现状
 

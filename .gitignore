@@ -14,3 +14,4 @@ macos_scan_*.json
 macos_wechat_*.csv
 macos_wechat_summary.md
 CleanMyWechat-macOS/
+*.p12

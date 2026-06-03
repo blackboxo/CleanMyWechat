@@ -22,12 +22,19 @@ def is_wechat_like_account_dir(file_path):
     """判断一个目录是否像微信/企业微信账号数据目录。"""
     if not file_path or not os.path.isdir(file_path):
         return False
+    name = os.path.basename(os.path.normpath(file_path))
+    if name in {'all_users', 'Backup', 'old_backup'}:
+        return False
     try:
         names = {name.lower() for name in os.listdir(file_path)}
     except Exception:
         return False
 
     if 'filestorage' in names or 'msgattach' in names or 'msg' in names:
+        return True
+
+    # macOS 企业微信账号目录通常是 Users/<account>/Data。
+    if 'data' in names and ('wxwork' in str(file_path).lower() or 'wework' in str(file_path).lower()):
         return True
 
     # 企业微信常见目录里会出现 Cache，并按月份继续存文件。
@@ -121,16 +128,34 @@ def get_dir_name(filepath):
             name = account_dir
         if 'wxwork' in account_dir.lower() and not name.lower().startswith('wxwork'):
             name = 'WXWork-' + name
+        elif 'wework' in account_dir.lower() and not name.lower().startswith('wework'):
+            name = 'WXWork-' + name
         dirlist.append(account_dir)
         names.append(name)
 
     return (dirlist, names)
 
 
+def macos_wechat_candidates():
+    home = str(Path.home())
+    return [
+        os.path.join(home, 'Library', 'Containers', 'com.tencent.xinWeChat', 'Data', 'Documents', 'xwechat_files'),
+        os.path.join(home, 'Library', 'Containers', 'com.tencent.xinWeChat', 'Data', 'Library', 'Application Support', 'com.tencent.xinWeChat'),
+        os.path.join(home, 'Documents', 'xwechat_files'),
+        os.path.join(home, 'Library', 'Containers', 'com.tencent.WeWorkMac', 'Data', 'Documents', 'WXWork', 'Users'),
+        os.path.join(home, 'Library', 'Containers', 'com.tencent.WeWorkMac', 'Data', 'Documents', 'WeWork', 'Users'),
+        os.path.join(home, 'Library', 'Containers', 'com.tencent.WeWorkMac', 'Data', 'Library', 'Application Support', 'WXWork', 'Data'),
+    ]
+
+
 def find_all_wechat_paths():
     """Return valid WeChat/WXWork data roots from common locations and registry values."""
     user = getpass.getuser()
-    candidates = [
+    candidates = []
+    if os.name == 'posix':
+        candidates.extend(macos_wechat_candidates())
+
+    candidates.extend([
         os.path.join(r'C:\Users', user, 'Documents', 'WeChat Files'),
         os.path.join(r'C:\Users', user, 'OneDrive', 'Documents', 'WeChat Files'),
         os.path.join(r'C:\Users', user, 'Documents', 'xwechat_files'),
@@ -139,7 +164,7 @@ def find_all_wechat_paths():
         os.path.join(r'C:\Users', 'Public', 'Documents', 'WXWork'),
         os.path.join(r'C:\Users', user, 'AppData', 'Local', 'Packages', 'TencentWeChatLimited.forWindows10_sdtnhv12zgd7a', 'LocalCache', 'Roaming', 'Tencent', 'WeChatAppStore', 'WeChatAppStore Files'),
         os.path.join(r'C:\Users', user, 'AppData', 'Local', 'Packages', 'TencentWeChatLimited.WeChatUWP_sdtnhv12zgd7a', 'LocalCache', 'Roaming', 'Tencent', 'WeChatAppStore', 'WeChatAppStore Files'),
-    ]
+    ])
 
     appdata = os.environ.get('APPDATA')
     if appdata:
