@@ -3,14 +3,15 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QGraphicsDropShadowEffect, QListWidgetItem, QListView, \
     QWidget, QLabel, QFrame, QHBoxLayout, QVBoxLayout, QGridLayout, QFileDialog, QMessageBox, QTableWidget, \
     QTableWidgetItem, QHeaderView, QPushButton, QAbstractItemView
-from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint, QTimer
-from PyQt5.QtGui import QMouseEvent, QCursor, QColor
+from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint, QTimer, QUrl
+from PyQt5.QtGui import QMouseEvent, QCursor, QColor, QDesktopServices, QIcon
 from PyQt5.uic import loadUi
 
 from pathlib import Path
 from dateutil import relativedelta
 import utils.resources
 import os, datetime, time, re, math, shutil, json, logging
+import tempfile
 
 from utils.deleteThread import *
 from utils.multiDeleteThread import multiDeleteThread
@@ -23,9 +24,28 @@ QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 
 # determine if application is a script file or frozen exe
 if getattr(sys, 'frozen', False):
-    working_dir = os.path.dirname(os.path.realpath(sys.executable))
+    resource_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.realpath(sys.executable)))
+    if sys.platform == "darwin":
+        working_dir = os.path.join(str(Path.home()), "Library", "Application Support", "Clean My WeChat")
+    else:
+        working_dir = os.path.dirname(os.path.realpath(sys.executable))
 elif __file__:
-    working_dir = os.path.split(os.path.realpath(__file__))[0]
+    resource_dir = os.path.split(os.path.realpath(__file__))[0]
+    working_dir = resource_dir
+
+def ensure_writable_dir(path):
+    os.makedirs(path, exist_ok=True)
+    test_path = os.path.join(path, ".write_test")
+    with open(test_path, "w", encoding="utf-8") as f:
+        f.write("")
+    os.remove(test_path)
+    return path
+
+
+try:
+    working_dir = ensure_writable_dir(working_dir)
+except OSError:
+    working_dir = ensure_writable_dir(os.path.join(tempfile.gettempdir(), "Clean My WeChat"))
 
 # 统一配置、日志、白名单、自动清理状态文件的位置，避免不同模块各读各的。
 CONFIG_PATH = os.path.join(working_dir, "config.json")
@@ -33,6 +53,9 @@ LOG_PATH = os.path.join(working_dir, "cleanmywechat.log")
 STATE_PATH = os.path.join(working_dir, "clean_state.json")
 WHITELIST_PATH = os.path.join(working_dir, "whitelist.txt")
 PREVIEW_PATH = os.path.join(working_dir, "last_scan_preview.txt")
+APP_NAME = "Clean My WeChat"
+APP_ORG = "CleanMyWechat"
+APP_ICON_PATH = os.path.join(resource_dir, "images", "wechat.png")
 
 logging.basicConfig(
     handlers=[logging.FileHandler(LOG_PATH, encoding="utf-8")],
@@ -151,6 +174,17 @@ def format_size(size):
     if index == 0:
         return f"{int(size)} {units[index]}"
     return f"{size:.2f} {units[index]}"
+
+
+def app_icon():
+    return QIcon(APP_ICON_PATH)
+
+
+def configure_application(app):
+    app.setApplicationName(APP_NAME)
+    app.setApplicationDisplayName(APP_NAME)
+    app.setOrganizationName(APP_ORG)
+    app.setWindowIcon(app_icon())
 
 
 def normalize_ext(ext):
@@ -362,6 +396,10 @@ def apply_startup_setting(config):
         logging.exception("设置开机启动失败")
 
 
+def open_local_path(path):
+    return QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(path).expanduser())))
+
+
 # 主窗口
 class Window(QMainWindow):
     def mousePressEvent(self, event):
@@ -495,10 +533,8 @@ class ConfigWindow(Window):
             if value.get("wechat_id") == current_user:
                 data_dir = value.get("data_dir")
                 if data_dir and os.path.isdir(data_dir):
-                    try:
-                        os.startfile(data_dir)
-                    except OSError as e:
-                        self.setWarninginfo(f"打开文件夹失败：{e}")
+                    if not open_local_path(data_dir):
+                        self.setWarninginfo("打开文件夹失败。")
                         return
                     self.setSuccessinfo(f"已打开账号文件夹：{data_dir}")
                     return
@@ -681,7 +717,9 @@ class ConfigWindow(Window):
 
     def __init__(self):
         super().__init__()
-        loadUi(working_dir + "/images/config.ui", self)
+        loadUi(os.path.join(resource_dir, "images", "config.ui"), self)
+        self.setWindowTitle(f"{APP_NAME} · 设置")
+        self.setWindowIcon(app_icon())
 
         self._frame()
         self._connect()
@@ -784,7 +822,7 @@ class MainWindow(Window):
         self.lab_clean.setText("扫描并清理")
         self.lab_config.setText("设置")
         self.lab_close.setText("退出")
-        self.lab_about.setText("Clean My Wechat · 简单、安全地释放微信占用空间")
+        self.lab_about.setText(f"{APP_NAME} · 简单、安全地释放微信占用空间")
         self.lab_about.setStyleSheet("""
             .QLabel {
                 color: #6a7d72;
@@ -1203,7 +1241,21 @@ class MainWindow(Window):
         appdata = os.environ.get("APPDATA")
         localappdata = os.environ.get("LOCALAPPDATA")
         candidates = []
-        if client_type == "wxwork":
+        if sys.platform == "darwin":
+            home = str(Path.home())
+            if client_type == "wxwork":
+                candidates.extend([
+                    os.path.join(home, "Library", "Containers", "com.tencent.WeWorkMac", "Data", "Library", "Caches"),
+                    os.path.join(home, "Library", "Containers", "com.tencent.WeWorkMac", "Data", "Library", "Logs"),
+                    os.path.join(home, "Library", "Containers", "com.tencent.WeWorkMac", "Data", "Library", "Application Support", "WXWork"),
+                ])
+            else:
+                candidates.extend([
+                    os.path.join(home, "Library", "Containers", "com.tencent.xinWeChat", "Data", "Library", "Caches"),
+                    os.path.join(home, "Library", "Containers", "com.tencent.xinWeChat", "Data", "Library", "Logs"),
+                    os.path.join(home, "Library", "Containers", "com.tencent.xinWeChat", "Data", "Library", "Application Support", "com.tencent.xinWeChat"),
+                ])
+        elif client_type == "wxwork":
             if appdata:
                 candidates.append(os.path.join(appdata, "Tencent", "WXWork"))
             if localappdata:
@@ -1442,11 +1494,13 @@ class MainWindow(Window):
             return
         try:
             if os.path.exists(target_path):
-                os.startfile(target_path)
+                if not open_local_path(target_path):
+                    self.setWarninginfo("打开失败。")
             else:
                 parent_path = os.path.dirname(target_path)
                 if parent_path and os.path.isdir(parent_path):
-                    os.startfile(parent_path)
+                    if not open_local_path(parent_path):
+                        self.setWarninginfo("打开失败。")
                 else:
                     self.setWarninginfo("文件不存在，可能已经被移动或删除。")
         except OSError as e:
@@ -1789,7 +1843,9 @@ class MainWindow(Window):
 
     def __init__(self):
         super().__init__()
-        loadUi(working_dir + "/images/main.ui", self)
+        loadUi(os.path.join(resource_dir, "images", "main.ui"), self)
+        self.setWindowTitle(APP_NAME)
+        self.setWindowIcon(app_icon())
 
         self._frame()
         self._eventfilter()
@@ -1830,5 +1886,6 @@ class MainWindow(Window):
 
 if __name__ == '__main__':
     app = QApplication([])
+    configure_application(app)
     win = MainWindow()
     app.exec_()

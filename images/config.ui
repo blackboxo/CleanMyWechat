@@ -171,7 +171,7 @@ QPushButton#btn_close:hover {
        <item>
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>Clean My Wechat · 清理设置</string>
+          <string>Clean My WeChat · 清理设置</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
@@ -530,7 +530,7 @@ QPushButton#btn_close:hover {
           <item>
            <widget class="QLabel" name="startupHint">
             <property name="text">
-             <string>启动 Windows 后自动打开 Clean My Wechat。</string>
+             <string>启动系统后自动打开 Clean My WeChat。</string>
             </property>
             <property name="class" stdset="0">
              <string>sectionHint</string>

@@ -1,4 +1,4 @@
-# Clean My PC WeChat
+# Clean My WeChat
 
 ![](https://markdown-pic-blackboxo.oss-cn-shanghai.aliyuncs.com/banner.png)
 
@@ -10,13 +10,22 @@
 
 该工具不会删除文字的聊天记录，请放心使用。请给个 **Star** 吧，非常感谢！
 
-**现已经支持 Windows 系统中的所有微信版本，包含最新版的微信 4.0+ 和企业微信。**
+**现已经支持 Windows 和 Mac 系统中的所有微信版本，包含最新版的微信 4.0+ 和企业微信。**
+
+Windows 版本：
 
 [国内地址 - 点击下载](
 https://wwbie.lanzoue.com/iHgXp3ql84ng)
 
 [Github Release - 点击下载](
 https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.zip)
+
+macOS 版本：
+
+[国内地址 - 点击下载](
+https://wwbie.lanzoue.com/ixTMX3r1jomh)
+
+[Github Release - 点击下载](https://github.com/blackboxo/CleanMyWechat/releases/download/v3.0_mac/CleanMyWechat.dmg)
 
 ## 特性
 1. 自动识别所有微信及企业微信账号；
@@ -27,7 +36,7 @@ https://github.com/blackboxo/CleanMyWechat/releases/download/v2.1/CleanMyWechat.
 
 ## 运行截图
 
-![Clean My Wechat 首页](images/README-merge.png)
+![Clean My WeChat 首页](images/README-merge.png)
 
 ## 微信现状
 
