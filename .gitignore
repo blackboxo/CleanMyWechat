@@ -9,3 +9,8 @@ cleanmywechat.log
 whitelist.txt
 last_scan_preview.txt
 clean_state.json
+.DS_Store
+macos_scan_*.json
+macos_wechat_*.csv
+macos_wechat_summary.md
+CleanMyWechat-macOS/
