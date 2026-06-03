@@ -14,6 +14,7 @@ import os, datetime, time, re, math, shutil, json, logging
 import tempfile
 
 from utils.deleteThread import *
+from utils.cleanupManifest import combine_cleanup_results, write_cleanup_manifest
 from utils.multiDeleteThread import multiDeleteThread
 from utils.selectVersion import *
 from utils.selectVersion import check_dir, existing_user_config, find_all_wechat_paths, get_dir_name, is_wechat_like_account_dir
@@ -53,6 +54,7 @@ LOG_PATH = os.path.join(working_dir, "cleanmywechat.log")
 STATE_PATH = os.path.join(working_dir, "clean_state.json")
 WHITELIST_PATH = os.path.join(working_dir, "whitelist.txt")
 PREVIEW_PATH = os.path.join(working_dir, "last_scan_preview.txt")
+CLEANUP_MANIFEST_DIR = os.path.join(working_dir, "cleanup_manifests")
 APP_NAME = "Clean My WeChat"
 APP_ORG = "CleanMyWechat"
 APP_ICON_PATH = os.path.join(resource_dir, "images", "wechat.png")
@@ -998,8 +1000,11 @@ class MainWindow(Window):
 
         share_thread_arr = [0]
         direct_delete = load_config_file().get("global", {}).get("direct_delete", False)
+        self.cleanup_results = []
+        self.cleanup_expected_threads = 1
         thread = multiDeleteThread(selected_files, selected_dirs, share_thread_arr, direct_delete=direct_delete)
         thread.delete_process_signal.connect(self.callback)
+        thread.delete_complete_signal.connect(self.on_delete_complete)
         self.thread_list.append(thread)
         thread.start()
 
@@ -1705,6 +1710,26 @@ class MainWindow(Window):
                 self.auto_clean_running = False
             return
 
+    def on_delete_complete(self, result):
+        if not hasattr(self, "cleanup_results"):
+            self.cleanup_results = []
+        self.cleanup_results.append(result)
+        expected = max(1, int(getattr(self, "cleanup_expected_threads", 1)))
+        if len(self.cleanup_results) < expected:
+            return
+
+        combined = combine_cleanup_results(self.cleanup_results)
+        manifest_path = write_cleanup_manifest(combined, CLEANUP_MANIFEST_DIR)
+        self.last_cleanup_manifest = manifest_path
+        logging.info("清理审计记录已保存：%s", manifest_path)
+
+        failed_count = combined.get("failed_count", 0)
+        skipped_count = combined.get("skipped_count", 0)
+        if failed_count:
+            self.setWarninginfo(f"清理完成，但有 {failed_count} 个失败。审计记录：{manifest_path}")
+        else:
+            self.setSuccessinfo(f"清理完成，审计记录已保存：{manifest_path}。跳过 {skipped_count} 个受保护或不存在的路径。")
+
     def should_run_auto_clean(self, config):
         global_config = config.get("global", {})
         if not global_config.get("auto_clean_enable", False):
@@ -1738,6 +1763,8 @@ class MainWindow(Window):
         detail_lines = []
         share_thread_arr = [0]
         system_cache_added = False
+        self.cleanup_results = []
+        self.cleanup_expected_threads = 0
 
         for i, value in enumerate(self.config.get("users", [])):
             file_list = []
@@ -1766,6 +1793,7 @@ class MainWindow(Window):
                 direct_delete = self.config.get("global", {}).get("direct_delete", False)
                 thread = multiDeleteThread(file_list, dir_list, share_thread_arr, direct_delete=direct_delete)
                 thread.delete_process_signal.connect(self.callback)
+                thread.delete_complete_signal.connect(self.on_delete_complete)
                 self.thread_list.append(thread)
 
         if not need_clean:
@@ -1776,6 +1804,7 @@ class MainWindow(Window):
             self.total_file = total_file
             self.total_dir = total_dir
             self.total_size = total_stats.get("total_size", 0)
+            self.cleanup_expected_threads = len(self.thread_list)
             self.bar_progress.setRange(0, 100)
             self.bar_progress.setValue(0)
             if not auto_mode or self.config.get("global", {}).get("auto_clean_confirm", True):
