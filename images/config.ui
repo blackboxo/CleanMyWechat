@@ -21,7 +21,7 @@
   </property>
   <property name="styleSheet">
    <string notr="true">* {
-    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", "Segoe UI", sans-serif;
     color: #21352b;
 }
 QWidget#centralwidget {
