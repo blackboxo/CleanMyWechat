@@ -76,17 +76,19 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           DMG_NAME="CleanMyWechat-${VERSION}-macOS-arm64"
+          APP="dist/CleanMyWechat.app"
 
-          mkdir -p staging
-          cp -R dist/CleanMyWechat.app staging/
-          ln -s /Applications staging/Applications
+          # Create a read-write disk image, attach it
+          hdiutil create -size 600m -volname "CleanMyWechat" -fs HFS+ -attach /tmp/_tmp_cmw.dmg
 
-          hdiutil create \
-            -volname "CleanMyWechat" \
-            -srcfolder staging \
-            -ov \
-            -format UDZO \
-            "dist/${DMG_NAME}.dmg"
+          # Copy .app and create Applications shortcut inside the mounted volume
+          cp -R "${APP}" /Volumes/CleanMyWechat/
+          ln -s /Applications /Volumes/CleanMyWechat/Applications
+
+          # Detach and convert to compressed read-only
+          hdiutil detach /Volumes/CleanMyWechat
+          hdiutil convert /tmp/_tmp_cmw.dmg -format UDZO -o "dist/${DMG_NAME}.dmg"
+          rm -f /tmp/_tmp_cmw.dmg
 
           echo "ARTIFACT=dist/${DMG_NAME}.dmg" >> $GITHUB_ENV
 
