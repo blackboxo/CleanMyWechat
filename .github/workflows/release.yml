@@ -83,7 +83,11 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           DMG_NAME="CleanMyWechat-${VERSION}-macOS-arm64"
-          APP="dist/CleanMyWechat.app"
+
+          # PyInstaller -w on macOS creates an .app bundle
+          ls -la dist/
+          APP=$(ls -d dist/*.app | head -1)
+          echo "Using app bundle: ${APP}"
 
           hdiutil create -size 600m -volname "CleanMyWechat" -fs HFS+ -attach /tmp/_tmp_cmw.dmg
           cp -R "${APP}" /Volumes/CleanMyWechat/
