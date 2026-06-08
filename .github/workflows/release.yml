@@ -1,0 +1,92 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: macOS-arm64
+            icon: images/icon.png
+          - os: windows-latest
+            target: Windows-x64
+            icon: images/icon.ico
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build with PyInstaller (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          pyinstaller -w \
+            -i ${{ matrix.icon }} \
+            --name "CleanMyWechat" \
+            --add-data "images:images" \
+            --clean \
+            main.py
+
+      - name: Build with PyInstaller (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          pyinstaller -w -F \
+            -i ${{ matrix.icon }} \
+            --name "CleanMyWechat" \
+            --add-data "images;images" \
+            --clean \
+            main.py
+
+      - name: Package (macOS .dmg)
+        if: matrix.os == 'macos-latest'
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DMG_NAME="CleanMyWechat-${VERSION}-macOS-arm64"
+
+          mkdir -p staging
+          cp -R dist/CleanMyWechat.app staging/
+          ln -s /Applications staging/Applications
+
+          hdiutil create \
+            -volname "CleanMyWechat" \
+            -srcfolder staging \
+            -ov \
+            -format UDZO \
+            "dist/${DMG_NAME}.dmg"
+
+          echo "ARTIFACT=dist/${DMG_NAME}.dmg" >> $GITHUB_ENV
+
+      - name: Package (Windows .zip)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME -replace '^v', ''
+          $ZIP_NAME = "CleanMyWechat-${VERSION}-Windows-x64"
+
+          mkdir staging
+          Copy-Item "dist\CleanMyWechat.exe" "staging\"
+
+          Compress-Archive -Path "staging\*" -DestinationPath "dist\$ZIP_NAME.zip"
+
+          "ARTIFACT=dist/$ZIP_NAME.zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ARTIFACT }}
+          generate_release_notes: true
