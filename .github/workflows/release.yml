@@ -4,6 +4,17 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (如 2.2，不要前缀 v)'
+        required: true
+        type: string
+      create_release:
+        description: '是否发布到 Release'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -32,6 +43,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Set version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          fi
+
       - name: Build with PyInstaller (macOS)
         if: matrix.os == 'macos-latest'
         run: |
@@ -55,7 +74,6 @@ jobs:
       - name: Package (macOS .dmg)
         if: matrix.os == 'macos-latest'
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           DMG_NAME="CleanMyWechat-${VERSION}-macOS-arm64"
 
           mkdir -p staging
@@ -75,8 +93,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          $VERSION = $env:GITHUB_REF_NAME -replace '^v', ''
-          $ZIP_NAME = "CleanMyWechat-${VERSION}-Windows-x64"
+          $ZIP_NAME = "CleanMyWechat-${env:VERSION}-Windows-x64"
 
           mkdir staging
           Copy-Item "dist\CleanMyWechat.exe" "staging\"
@@ -85,7 +102,14 @@ jobs:
 
           "ARTIFACT=dist/$ZIP_NAME.zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Upload to Release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CleanMyWechat-${{ matrix.target }}
+          path: ${{ env.ARTIFACT }}
+
+      - name: Create Release
+        if: github.event_name == 'push' || inputs.create_release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.ARTIFACT }}
