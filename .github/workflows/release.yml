@@ -90,6 +90,9 @@ jobs:
           hdiutil convert /tmp/_tmp_cmw.dmg -format UDZO -o "dist/${DMG_NAME}.dmg"
           rm -f /tmp/_tmp_cmw.dmg
 
+          # Clean up build artifacts to save space before upload
+          rm -rf build dist/CleanMyWechat dist/CleanMyWechat.app
+
           echo "ARTIFACT=dist/${DMG_NAME}.dmg" >> $GITHUB_ENV
 
       - name: Package (Windows .zip)
