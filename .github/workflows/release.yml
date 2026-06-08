@@ -65,6 +65,7 @@ jobs:
 
       - name: Build with PyInstaller (Windows)
         if: matrix.os == 'windows-latest'
+        shell: bash
         run: |
           pyinstaller -w -F \
             -i ${{ matrix.icon }} \
