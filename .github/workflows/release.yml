@@ -1,0 +1,145 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (如 2.2，不要前缀 v)'
+        required: true
+        type: string
+      create_release:
+        description: '是否发布到 Release'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: macOS-arm64
+            icon: images/icon.icns
+          - os: windows-latest
+            target: Windows-x64
+            icon: images/icon.ico
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Set version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          fi
+
+      - name: Build with PyInstaller (macOS)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          pyinstaller -w \
+            -i ${{ matrix.icon }} \
+            --name "CleanMyWechat" \
+            --add-data "images:images" \
+            --clean \
+            main.py
+
+      - name: Build with PyInstaller (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          pyinstaller -w -F \
+            -i ${{ matrix.icon }} \
+            --name "CleanMyWechat" \
+            --add-data "images;images" \
+            --clean \
+            main.py
+
+      - name: Package (macOS .dmg)
+        if: matrix.os == 'macos-latest'
+        run: |
+          DMG_NAME="CleanMyWechat-${VERSION}-macOS-arm64"
+
+          # PyInstaller -w on macOS creates an .app bundle
+          ls -la dist/
+          APP=$(ls -d dist/*.app | head -1)
+          echo "Using app bundle: ${APP}"
+
+          hdiutil create -size 600m -volname "CleanMyWechat" -fs HFS+ -attach /tmp/_tmp_cmw.dmg
+          cp -R "${APP}" /Volumes/CleanMyWechat/
+          ln -s /Applications /Volumes/CleanMyWechat/Applications
+          hdiutil detach /Volumes/CleanMyWechat
+          hdiutil convert /tmp/_tmp_cmw.dmg -format UDZO -o "dist/${DMG_NAME}.dmg"
+          rm -f /tmp/_tmp_cmw.dmg
+
+          # Clean up build artifacts to save space before upload
+          rm -rf build dist/CleanMyWechat dist/CleanMyWechat.app
+
+          echo "ARTIFACT=dist/${DMG_NAME}.dmg" >> $GITHUB_ENV
+
+      - name: Package (Windows .zip)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ZIP_NAME = "CleanMyWechat-${env:VERSION}-Windows-x64"
+          mkdir staging
+          Copy-Item "dist\CleanMyWechat.exe" "staging\"
+          Compress-Archive -Path "staging\*" -DestinationPath "dist\$ZIP_NAME.zip"
+          "ARTIFACT=dist/$ZIP_NAME.zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CleanMyWechat-${{ matrix.target }}
+          path: ${{ env.ARTIFACT }}
+
+  release:
+    name: Create Release
+    if: github.event_name == 'push' || inputs.create_release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Set version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: CleanMyWechat-*
+          merge-multiple: true
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          files: artifacts/*
+          generate_release_notes: true

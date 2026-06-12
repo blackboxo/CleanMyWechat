@@ -1142,9 +1142,12 @@ class MainWindow(Window):
             return True
         dir_set.add(dir_path)
         dir_list.append(dir_path)
+        dir_size = self._get_dir_file_size(dir_path)
+        stats["total_size"] += dir_size
         stats["total_month_dirs"] += 1
         stats["categories"].setdefault(category, {"count": 0, "size": 0})
         stats["categories"][category]["count"] += 1
+        stats["categories"][category]["size"] += dir_size
         if len(detail_lines) < 1200:
             detail_lines.append(f"[旧月份文件夹] {CATEGORY_NAME.get(category, category)}  {dir_path}")
         return True
@@ -1155,6 +1158,16 @@ class MainWindow(Window):
         parts = {part.lower() for part in Path(str(root_path)).parts}
         mixed_file_dirs = {"msgattach", "attach", "xwechat_files"}
         return not bool(parts & mixed_file_dirs)
+
+    def _get_dir_file_size(self, dir_path):
+        total = 0
+        try:
+            for root, dirs, files in os.walk(dir_path):
+                for f in files:
+                    total += safe_file_size(os.path.join(root, f))
+        except Exception:
+            pass
+        return total
 
     def scan_files_recursive(self, root_path, now, day, category, file_list, file_set, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts):
         # 用 os.walk 递归扫描，解决新版微信多层目录扫不到的问题。
@@ -1253,7 +1266,6 @@ class MainWindow(Window):
                 candidates.extend([
                     os.path.join(home, "Library", "Containers", "com.tencent.xinWeChat", "Data", "Library", "Caches"),
                     os.path.join(home, "Library", "Containers", "com.tencent.xinWeChat", "Data", "Library", "Logs"),
-                    os.path.join(home, "Library", "Containers", "com.tencent.xinWeChat", "Data", "Library", "Application Support", "com.tencent.xinWeChat"),
                 ])
         elif client_type == "wxwork":
             if appdata:
@@ -1523,7 +1535,7 @@ class MainWindow(Window):
         dialog.setStyleSheet("""
             QDialog {
                 background-color: #edf7f1;
-                font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+                font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", "Segoe UI", sans-serif;
                 color: #21352b;
             }
             QLabel#previewTitle {

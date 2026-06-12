@@ -1,5 +1,5 @@
 import os, datetime, re
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 from PyQt5.QtCore import QThread, pyqtSignal, QMutex
 
 
@@ -50,7 +50,7 @@ class ScanThread(QThread):
         if not self.is_running:
             return
         
-        dir_name = PureWindowsPath(path)
+        dir_name = Path(path)
         correct_path = Path(dir_name)
         now = datetime.datetime.now()
         
