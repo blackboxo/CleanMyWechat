@@ -3,6 +3,7 @@ import os
 import tempfile
 import traceback
 import faulthandler
+import hashlib
 from pathlib import Path
 
 
@@ -54,7 +55,7 @@ install_early_crash_logging()
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QGraphicsDropShadowEffect, QListWidgetItem, QListView, \
     QWidget, QLabel, QFrame, QHBoxLayout, QVBoxLayout, QGridLayout, QFileDialog, QMessageBox, QTableWidget, \
-    QTableWidgetItem, QHeaderView, QPushButton, QAbstractItemView
+    QTableWidgetItem, QHeaderView, QPushButton, QAbstractItemView, QLineEdit, QCheckBox, QSpinBox
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QThread, pyqtSignal, QMutex, QSize, QEvent, QPoint, QTimer, QUrl
 from PyQt5.QtGui import QMouseEvent, QCursor, QColor, QDesktopServices, QIcon
 from PyQt5.uic import loadUi
@@ -69,6 +70,14 @@ from utils.selectVersion import *
 from utils.selectVersion import check_dir, existing_user_config, find_all_wechat_paths, get_dir_name, \
     is_wechat_like_account_dir, request_macos_private_data_access
 from utils.scanThread import ScanThread
+from utils.archiveMigration import (
+    DEFAULT_BATCH_BYTES,
+    DEFAULT_REMOVAL_BYTES,
+    DEFAULT_REMOVAL_ITEMS,
+    get_removal_preview,
+    run_archive_cycle,
+    run_removal_cycle,
+)
 # 设置应用程序在高DPI屏幕上启用高DPI缩放。Set the application to enable high DPI scaling on high DPI screens
 # 注意事项：此行代码必须在QApplication实例化之前调用，否则会调用失败。Notes: This line of code must be called before the instantiation of the QApplication object; otherwise, it will fail
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
@@ -104,6 +113,7 @@ LOG_PATH = os.path.join(working_dir, "cleanmywechat.log")
 STATE_PATH = os.path.join(working_dir, "clean_state.json")
 WHITELIST_PATH = os.path.join(working_dir, "whitelist.txt")
 PREVIEW_PATH = os.path.join(working_dir, "last_scan_preview.txt")
+ARCHIVE_STATE_DIR = os.path.join(working_dir, "archive_migrations")
 APP_ICON_PATH = os.path.join(resource_dir, "images", "wechat.png")
 
 logging.basicConfig(
@@ -157,7 +167,11 @@ DEFAULT_GLOBAL_CONFIG = {
     "auto_clean_confirm": True,
     "run_at_startup": False,
     "startup_clean_cache_only": False,
-    "direct_delete": False
+    "direct_delete": False,
+    "archive_target": "",
+    "archive_batch_mb": max(DEFAULT_BATCH_BYTES // (1024 * 1024), 1),
+    # 旧版试验字段保留用于配置兼容；归档与清理现已强制拆成两个动作。
+    "archive_remove_uploaded": False,
 }
 
 LEGACY_GLOBAL_CONFIG_KEYS = (
@@ -283,6 +297,8 @@ def ensure_config_defaults(config):
     global_config = config.setdefault("global", {})
     for key, value in DEFAULT_GLOBAL_CONFIG.items():
         global_config.setdefault(key, value)
+    # 早期试验版可能保存了自动清理选项。新版不再读取该授权。
+    global_config["archive_remove_uploaded"] = False
     for key in LEGACY_GLOBAL_CONFIG_KEYS:
         global_config.pop(key, None)
 
@@ -449,6 +465,70 @@ def open_local_path(path):
     return QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(path).expanduser())))
 
 
+def default_archive_target():
+    if sys.platform == "darwin":
+        cloud_docs = (
+            Path.home()
+            / "Library"
+            / "Mobile Documents"
+            / "com~apple~CloudDocs"
+        )
+        return str(cloud_docs / "CleanMyWechat Archive")
+    return str(Path.home() / "Documents" / "CleanMyWechat Archive")
+
+
+def archive_manifest_path(archive_target):
+    normalized = str(Path(archive_target).expanduser().resolve(strict=False))
+    key = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+    return os.path.join(ARCHIVE_STATE_DIR, f"archive-{key}.sqlite3")
+
+
+class ArchiveWorker(QThread):
+    progress = pyqtSignal(int, str)
+    finished_ok = pyqtSignal(dict)
+    failed = pyqtSignal(str)
+
+    def __init__(
+        self,
+        manifest_path,
+        archive_target,
+        operation,
+        sources=None,
+        batch_bytes=DEFAULT_BATCH_BYTES,
+    ):
+        super().__init__()
+        self.manifest_path = manifest_path
+        self.archive_target = archive_target
+        self.operation = operation
+        self.sources = sources or []
+        self.batch_bytes = batch_bytes
+
+    def run(self):
+        try:
+            if self.operation == "archive":
+                result = run_archive_cycle(
+                    self.manifest_path,
+                    self.archive_target,
+                    self.sources,
+                    batch_bytes=self.batch_bytes,
+                    progress_callback=self.progress.emit,
+                )
+            elif self.operation == "remove":
+                result = run_removal_cycle(
+                    self.manifest_path,
+                    self.archive_target,
+                    confirmed=True,
+                    max_items=DEFAULT_REMOVAL_ITEMS,
+                    max_bytes=DEFAULT_REMOVAL_BYTES,
+                    progress_callback=self.progress.emit,
+                )
+            else:
+                raise ValueError(f"不支持的归档操作：{self.operation}")
+            self.finished_ok.emit(result)
+        except Exception:
+            self.failed.emit(traceback.format_exc())
+
+
 # 主窗口
 class Window(QMainWindow):
     def __init__(self, *args, **kwargs):
@@ -457,14 +537,16 @@ class Window(QMainWindow):
         self.m_DragPosition = QPoint(0, 0)
 
     def mousePressEvent(self, event):
-        # 重写一堆方法使其支持拖动
+        if sys.platform == "darwin":
+            return super().mousePressEvent(event)
         if event.button() == Qt.LeftButton:
             self.m_drag = True
             self.m_DragPosition = event.globalPos() - self.pos()
             event.accept()
-            # self.setCursor(QCursor(Qt.OpenHandCursor))
 
     def mouseMoveEvent(self, QMouseEvent):
+        if sys.platform == "darwin":
+            return super().mouseMoveEvent(QMouseEvent)
         try:
             if QMouseEvent.buttons() & Qt.LeftButton and self.m_drag:
                 self.move(QMouseEvent.globalPos() - self.m_DragPosition)
@@ -474,13 +556,24 @@ class Window(QMainWindow):
 
     def mouseReleaseEvent(self, QMouseEvent):
         self.m_drag = False
-        # self.setCursor(QCursor(Qt.ArrowCursor))
+        return super().mouseReleaseEvent(QMouseEvent)
 
     def _frame(self):
-        # 边框
+        if sys.platform == "darwin":
+            # 使用原生标题栏，恢复红/黄/绿窗口按钮、系统拖动和窗口菜单。
+            self.setWindowFlags(
+                Qt.Window
+                | Qt.WindowTitleHint
+                | Qt.WindowSystemMenuHint
+                | Qt.WindowMinimizeButtonHint
+                | Qt.WindowMaximizeButtonHint
+                | Qt.WindowCloseButtonHint
+            )
+            self.setAttribute(Qt.WA_TranslucentBackground, False)
+            self.mainFrame.setGraphicsEffect(None)
+            return
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        # 阴影
         effect = QGraphicsDropShadowEffect(blurRadius=12, xOffset=0, yOffset=0)
         effect.setColor(QColor(25, 25, 25, 170))
         self.mainFrame.setGraphicsEffect(effect)
@@ -514,8 +607,9 @@ class Window(QMainWindow):
 
     def center_on_screen(self):
         try:
-            screen = QApplication.desktop().availableGeometry(self)
-            self.move(screen.center() - self.rect().center())
+            screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
+            available = screen.availableGeometry()
+            self.move(available.center() - self.rect().center())
         except Exception:
             pass
 
@@ -548,6 +642,198 @@ class Window(QMainWindow):
             """)
         self.lab_info.setWordWrap(True)  # 启用自动换行
         self.lab_info.setText(text)
+
+
+class ArchiveSettingsDialog(QDialog):
+    def __init__(self, global_config, parent=None):
+        super().__init__(parent)
+        self.selected_action = None
+        self.setWindowTitle("微信文件归档")
+        self.setMinimumSize(780, 520)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f3f6f4;
+                color: #20342a;
+                font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+            }
+            QLabel {
+                color: #395246;
+                font-size: 13px;
+            }
+            QLabel#archiveEyebrow {
+                color: #16854a;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            QLabel#archiveTitle {
+                color: #20342a;
+                font-size: 25px;
+                font-weight: 700;
+            }
+            QLabel#archiveIntro {
+                color: #5a7064;
+                font-size: 13px;
+            }
+            QLabel#stepCard {
+                color: #31483d;
+                background-color: #fbfcfb;
+                border: 1px solid #dce7df;
+                border-radius: 14px;
+                padding: 14px;
+                font-size: 13px;
+            }
+            QLineEdit, QSpinBox {
+                min-height: 36px;
+                padding: 0 12px;
+                background-color: #ffffff;
+                border: 1px solid #cbdad0;
+                border-radius: 9px;
+            }
+            QPushButton {
+                min-height: 40px;
+                padding: 0 18px;
+                border-radius: 10px;
+                background-color: #ffffff;
+                border: 1px solid #ceddd3;
+                color: #395246;
+            }
+            QPushButton:hover {
+                background-color: #edf5f0;
+                border-color: #aacbb7;
+            }
+            QPushButton#archivePrimary {
+                color: white;
+                background-color: #168f4e;
+                border-color: #168f4e;
+                font-weight: 600;
+            }
+            QPushButton#archivePrimary:hover {
+                background-color: #107a41;
+            }
+            QPushButton#removeReady {
+                color: #7a4b11;
+                background-color: #fffaf1;
+                border-color: #e9d3ad;
+            }
+        """)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(30, 26, 30, 24)
+        layout.setSpacing(12)
+
+        eyebrow = QLabel("ARCHIVE · VERIFY · CLEAN")
+        eyebrow.setObjectName("archiveEyebrow")
+        title = QLabel("把微信文件整理好，再决定是否清理")
+        title.setObjectName("archiveTitle")
+        intro = QLabel(
+            "归档与清理现在是两个独立步骤。归档批次只复制、去重和校验，不会移动微信源文件。"
+        )
+        intro.setObjectName("archiveIntro")
+        intro.setWordWrap(True)
+        layout.addWidget(eyebrow)
+        layout.addWidget(title)
+        layout.addWidget(intro)
+
+        steps = QGridLayout()
+        steps.setHorizontalSpacing(10)
+        step_texts = (
+            ("01 归档", "按年/月、账号、对话和类型整理"),
+            ("02 验证", "SHA-256 去重；iCloud 还需确认上传"),
+            ("03 清理", "稍后单独确认，小批量移入废纸篓"),
+        )
+        for index, (heading, body) in enumerate(step_texts):
+            card = QLabel(f"<b>{heading}</b><br>{body}")
+            card.setObjectName("stepCard")
+            card.setWordWrap(True)
+            card.setMinimumHeight(70)
+            steps.addWidget(card, 0, index)
+        layout.addLayout(steps)
+
+        target_row = QHBoxLayout()
+        target_label = QLabel("归档文件夹")
+        target_label.setMinimumWidth(78)
+        self.target_edit = QLineEdit(
+            global_config.get("archive_target") or default_archive_target()
+        )
+        self.target_edit.setCursorPosition(0)
+        self.target_edit.setToolTip(self.target_edit.text())
+        browse_button = QPushButton("选择…")
+        browse_button.clicked.connect(self.choose_target)
+        target_row.addWidget(target_label)
+        target_row.addWidget(self.target_edit, 1)
+        target_row.addWidget(browse_button)
+        layout.addLayout(target_row)
+
+        batch_row = QHBoxLayout()
+        batch_label = QLabel("单批上限")
+        batch_label.setMinimumWidth(78)
+        self.batch_edit = QSpinBox()
+        self.batch_edit.setRange(1, 10240)
+        self.batch_edit.setButtonSymbols(QSpinBox.NoButtons)
+        self.batch_edit.setValue(
+            int(global_config.get(
+                "archive_batch_mb",
+                DEFAULT_BATCH_BYTES // (1024 * 1024),
+            ))
+        )
+        self.batch_edit.setSuffix(" MB")
+        self.batch_edit.setMaximumWidth(150)
+        batch_row.addWidget(batch_label)
+        batch_row.addWidget(self.batch_edit)
+        batch_hint = QLabel("每次只归档这一批；再次运行会继续并复查上传状态")
+        batch_hint.setObjectName("archiveIntro")
+        batch_row.addWidget(batch_hint)
+        batch_row.addStretch(1)
+        layout.addLayout(batch_row)
+
+        safety = QLabel(
+            "安全边界：不会读取或解密聊天数据库；缺少归档、身份标记、哈希校验或上传确认时，"
+            "清理操作会被阻止。无法识别对话的文件归入 unknown_conversation。"
+        )
+        safety.setWordWrap(True)
+        safety.setStyleSheet(
+            "background:#fffaf1; color:#6d4b20; border:1px solid #ead8b9;"
+            "border-radius:10px; padding:11px;"
+        )
+        layout.addWidget(safety)
+
+        buttons = QHBoxLayout()
+        cancel = QPushButton("取消")
+        remove_ready = QPushButton("清理已确认的源文件…")
+        remove_ready.setObjectName("removeReady")
+        confirm = QPushButton("扫描并归档下一批")
+        confirm.setObjectName("archivePrimary")
+        cancel.clicked.connect(self.reject)
+        remove_ready.clicked.connect(lambda: self.choose_action("remove"))
+        confirm.clicked.connect(lambda: self.choose_action("archive"))
+        buttons.addWidget(cancel)
+        buttons.addStretch(1)
+        buttons.addWidget(remove_ready)
+        buttons.addWidget(confirm)
+        layout.addLayout(buttons)
+
+    def choose_action(self, action):
+        self.selected_action = action
+        self.accept()
+
+    def choose_target(self):
+        start = self.target_edit.text().strip() or default_archive_target()
+        start_path = Path(start).expanduser()
+        if not start_path.exists():
+            start = str(start_path.parent)
+        selected = QFileDialog.getExistingDirectory(self, "选择归档文件夹", start)
+        if selected:
+            self.target_edit.setText(selected)
+            self.target_edit.setToolTip(selected)
+
+    def values(self):
+        target = self.target_edit.text().strip()
+        if not target:
+            raise ValueError("请选择归档文件夹")
+        return {
+            "target": str(Path(target).expanduser()),
+            "batch_mb": max(int(self.batch_edit.value()), 1),
+            "action": self.selected_action or "archive",
+        }
 
 
 class ConfigWindow(Window):
@@ -800,6 +1086,10 @@ class MainWindow(Window):
             QApplication.processEvents()
 
     def closeEvent(self, event):
+        if getattr(self, "archive_worker", None) and self.archive_worker.isRunning():
+            self.setWarninginfo("归档批次仍在写入或校验，请等待当前批次完成后再退出。")
+            event.ignore()
+            return
         if hasattr(self, 'scan_thread') and self.scan_thread.isRunning():
             self.scan_thread.stop()
             self.scan_thread.wait()
@@ -875,6 +1165,8 @@ class MainWindow(Window):
         """)
         self.lab_clean.setText("扫描并清理")
         self.lab_config.setText("设置")
+        if hasattr(self, "btn_archive"):
+            self.btn_archive.setText("归档与迁移")
         self.lab_close.setText("退出")
         self.lab_about.setText(f"{APP_NAME} · 简单、安全地释放微信占用空间")
         self.lab_about.setStyleSheet("""
@@ -943,11 +1235,51 @@ class MainWindow(Window):
             }
         """
         self.lab_config.setStyleSheet(secondary_style)
+        if hasattr(self, "btn_archive"):
+            self.btn_archive.setStyleSheet("""
+                QPushButton {
+                    color: #486256;
+                    background-color: #f1f7f3;
+                    border: 1px solid #d3e4d8;
+                    border-radius: 18px;
+                    font-size: 14px;
+                    padding: 0 16px;
+                }
+                QPushButton:hover {
+                    color: #159452;
+                    background-color: #e8f6ed;
+                    border: 1px solid #b9dfc5;
+                }
+                QPushButton:pressed {
+                    background-color: #dff0e5;
+                }
+            """)
         self.lab_close.setStyleSheet(secondary_style)
+        if sys.platform == "darwin":
+            # 原生标题栏已经提供关闭按钮，避免界面里再出现一个假窗口控件。
+            self.lab_close.hide()
         for widget_name in ("check_select_all", "table_files", "lab_preview", "lab_execute_delete"):
             widget = getattr(self, widget_name, None)
             if widget is not None:
                 widget.hide()
+
+    def install_archive_action(self):
+        if hasattr(self, "btn_archive") or not hasattr(self, "secondaryLayout"):
+            return
+        self.btn_archive = QPushButton("归档与迁移", self.mainFrame)
+        self.btn_archive.setCursor(QCursor(Qt.PointingHandCursor))
+        self.btn_archive.setMinimumSize(112, 36)
+        self.btn_archive.setToolTip("分批归档、内容去重、确认上传；清理源文件需再次确认")
+        self.btn_archive.clicked.connect(self.run_archive_safely)
+        close_index = self.secondaryLayout.indexOf(self.lab_close)
+        self.secondaryLayout.insertWidget(max(close_index, 0), self.btn_archive)
+
+    def run_archive_safely(self):
+        try:
+            self.run_archive()
+        except Exception as exc:
+            logging.exception("归档迁移失败")
+            self.setWarninginfo(f"归档迁移失败：{exc}\n详情请查看 cleanmywechat.log")
 
     def init_table(self):
         self.table_files.setColumnCount(3)
@@ -1503,17 +1835,18 @@ class MainWindow(Window):
         elif cyear == td_year:
             return cmonth < td_month
 
-    def build_preview_text(self, total_stats, detail_lines):
+    def build_preview_text(self, total_stats, detail_lines, archive_mode=False):
         lines = []
-        lines.append("清理前请确认")
-        lines.append(f"预计可释放空间：{format_size(total_stats['total_size'])}")
+        lines.append("归档前请确认" if archive_mode else "清理前请确认")
+        size_label = "待归档体积" if archive_mode else "预计可释放空间"
+        lines.append(f"{size_label}：{format_size(total_stats['total_size'])}")
         lines.append(
-            f"将清理：{total_stats['total_files']} 个文件、"
+            f"{'归档候选' if archive_mode else '将清理'}：{total_stats['total_files']} 个文件、"
             f"{total_stats.get('total_dirs', 0)} 个空文件夹、"
             f"{total_stats.get('total_month_dirs', 0)} 个旧月份文件夹"
         )
         lines.append("")
-        lines.append("清理内容：")
+        lines.append("归档内容：" if archive_mode else "清理内容：")
         for key, name in CATEGORY_NAME.items():
             item = total_stats["categories"].get(key, {"count": 0, "size": 0})
             if item["count"] > 0:
@@ -1522,7 +1855,9 @@ class MainWindow(Window):
             lines.append("- 暂无分类数据")
         lines.append("")
         config = getattr(self, "config", {}) or {}
-        if config.get("global", {}).get("direct_delete", False):
+        if archive_mode:
+            lines.append("本次只处理一个批次；未确认上传或校验失败的源文件会保留。")
+        elif config.get("global", {}).get("direct_delete", False):
             lines.append("当前已开启直接删除，文件不会进入回收站。")
         else:
             lines.append("文件会先进入回收站，不会直接永久删除。")
@@ -1572,9 +1907,13 @@ class MainWindow(Window):
         except OSError as e:
             self.setWarninginfo(f"打开失败：{e}")
 
-    def show_preview_dialog(self, total_stats, detail_lines):
+    def show_preview_dialog(self, total_stats, detail_lines, archive_mode=False):
         # 清理前预览，不再一点开始就直接进回收站。
-        preview_text = self.build_preview_text(total_stats, detail_lines)
+        preview_text = self.build_preview_text(
+            total_stats,
+            detail_lines,
+            archive_mode=archive_mode,
+        )
         try:
             with open(PREVIEW_PATH, "w", encoding="utf-8") as f:
                 f.write(preview_text + "\n\n")
@@ -1584,7 +1923,7 @@ class MainWindow(Window):
             logging.exception("写入扫描预览失败")
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("确认清理")
+        dialog.setWindowTitle("确认分批归档" if archive_mode else "确认清理")
         dialog.setMinimumSize(820, 560)
         dialog.setStyleSheet("""
             QDialog {
@@ -1662,9 +2001,14 @@ class MainWindow(Window):
         root_layout.setContentsMargins(28, 24, 28, 22)
         root_layout.setSpacing(14)
 
-        title = QLabel("清理前请确认")
+        title = QLabel("归档前请确认" if archive_mode else "清理前请确认")
         title.setObjectName("previewTitle")
-        if self.config.get("global", {}).get("direct_delete", False):
+        if archive_mode:
+            subtitle_text = (
+                "确认后只运行一个批次：先去重并复制，目标在 iCloud Drive 时等待系统确认上传；"
+                "校验未完成的源文件会保留。"
+            )
+        elif self.config.get("global", {}).get("direct_delete", False):
             subtitle_text = "当前已开启直接删除，确认后文件不会进入回收站。"
         else:
             subtitle_text = "确认后文件会先进入回收站，不会直接永久删除。"
@@ -1677,7 +2021,10 @@ class MainWindow(Window):
         summary_layout.setHorizontalSpacing(12)
         summary_layout.setVerticalSpacing(12)
         summary_items = [
-            ("预计释放", format_size(total_stats.get("total_size", 0))),
+            (
+                "候选体积" if archive_mode else "预计释放",
+                format_size(total_stats.get("total_size", 0)),
+            ),
             ("文件", f"{total_stats.get('total_files', 0)} 个"),
             ("空文件夹", f"{total_stats.get('total_dirs', 0)} 个"),
             ("旧月份文件夹", f"{total_stats.get('total_month_dirs', 0)} 个"),
@@ -1739,7 +2086,7 @@ class MainWindow(Window):
         button_layout.addStretch(1)
         cancel_button = QPushButton("取消")
         cancel_button.setObjectName("cancelPreview")
-        confirm_button = QPushButton("确认清理")
+        confirm_button = QPushButton("确认归档本批次" if archive_mode else "确认清理")
         confirm_button.setObjectName("confirmPreview")
         cancel_button.clicked.connect(dialog.reject)
         confirm_button.clicked.connect(dialog.accept)
@@ -1771,6 +2118,232 @@ class MainWindow(Window):
                 self.auto_clean_running = False
             return
 
+    def run_archive(self):
+        if getattr(self, "archive_worker", None) and self.archive_worker.isRunning():
+            self.setWarninginfo("归档任务正在运行，请等待当前批次完成。")
+            return
+        config = load_config_file()
+        dialog = ArchiveSettingsDialog(config.get("global", {}), self)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        try:
+            options = dialog.values()
+        except ValueError as exc:
+            self.setWarninginfo(str(exc))
+            return
+        global_config = config.setdefault("global", {})
+        global_config["archive_target"] = options["target"]
+        global_config["archive_batch_mb"] = options["batch_mb"]
+        global_config["archive_remove_uploaded"] = False
+        save_json(CONFIG_PATH, config)
+        if options["action"] == "remove":
+            self.prepare_archive_removal(options)
+        else:
+            self.justdoit(archive_mode=True, archive_options=options)
+
+    def show_archive_removal_confirmation(self, preview):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("确认清理已归档源文件")
+        dialog.setMinimumSize(680, 410)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #f3f6f4;
+                color: #20342a;
+                font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+            }
+            QLabel#removeTitle {
+                color: #20342a;
+                font-size: 22px;
+                font-weight: 700;
+            }
+            QLabel#removeCard {
+                color: #395246;
+                background-color: #ffffff;
+                border: 1px solid #dce7df;
+                border-radius: 12px;
+                padding: 14px;
+                font-size: 13px;
+            }
+            QLabel#removeWarning {
+                color: #6d4b20;
+                background-color: #fffaf1;
+                border: 1px solid #ead8b9;
+                border-radius: 10px;
+                padding: 12px;
+            }
+            QPushButton {
+                min-height: 40px;
+                padding: 0 18px;
+                border-radius: 10px;
+                background-color: #ffffff;
+                border: 1px solid #ceddd3;
+            }
+            QPushButton#confirmRemoval {
+                color: white;
+                background-color: #a45b19;
+                border-color: #a45b19;
+                font-weight: 600;
+            }
+            QPushButton#confirmRemoval:disabled {
+                color: #9caaa2;
+                background-color: #e6ebe7;
+                border-color: #d5ddd8;
+            }
+        """)
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(28, 24, 28, 22)
+        layout.setSpacing(14)
+
+        title = QLabel("这是独立的清理步骤")
+        title.setObjectName("removeTitle")
+        subtitle = QLabel(
+            "本次不会继续归档，只处理已通过副本校验及上传状态检查的源文件。"
+        )
+        subtitle.setWordWrap(True)
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+
+        target_kind = "iCloud Drive" if preview.get("icloud_target") else "本地/其他磁盘"
+        cards = QGridLayout()
+        card_values = (
+            ("本批文件", f"{preview.get('batch_items', 0)} 个"),
+            ("本批体积", format_size(preview.get("batch_bytes", 0))),
+            ("仍可清理", f"{preview.get('eligible_items', 0)} 个"),
+            ("归档位置", target_kind),
+        )
+        for index, (label, value) in enumerate(card_values):
+            card = QLabel(f"{label}\n<b>{value}</b>")
+            card.setObjectName("removeCard")
+            card.setAlignment(Qt.AlignCenter)
+            cards.addWidget(card, 0, index)
+        layout.addLayout(cards)
+
+        warning = QLabel(
+            f"每次最多处理 {preview.get('max_items', DEFAULT_REMOVAL_ITEMS)} 个、"
+            f"{format_size(preview.get('max_bytes', DEFAULT_REMOVAL_BYTES))}。"
+            "每个文件都会再次核对归档哈希和源文件哈希，然后只移入系统废纸篓。"
+            "归档文件夹或身份标记缺失时，程序会停止。"
+        )
+        warning.setObjectName("removeWarning")
+        warning.setWordWrap(True)
+        layout.addWidget(warning)
+
+        confirmation = QCheckBox("我已在 Finder 中确认归档文件可打开，并同意处理这一小批源文件")
+        layout.addWidget(confirmation)
+
+        buttons = QHBoxLayout()
+        open_target = QPushButton("打开归档文件夹")
+        cancel = QPushButton("取消")
+        confirm = QPushButton("移入废纸篓")
+        confirm.setObjectName("confirmRemoval")
+        confirm.setEnabled(False)
+        open_target.clicked.connect(
+            lambda: open_local_path(preview.get("archive_root", ""))
+        )
+        confirmation.toggled.connect(confirm.setEnabled)
+        cancel.clicked.connect(dialog.reject)
+        confirm.clicked.connect(dialog.accept)
+        buttons.addWidget(open_target)
+        buttons.addStretch(1)
+        buttons.addWidget(cancel)
+        buttons.addWidget(confirm)
+        layout.addLayout(buttons)
+        return dialog.exec_() == QDialog.Accepted
+
+    def prepare_archive_removal(self, options):
+        target = options["target"]
+        state_path = archive_manifest_path(target)
+        legacy_path = str(Path(state_path).with_suffix(".json"))
+        if not os.path.exists(state_path) and not os.path.exists(legacy_path):
+            self.setWarninginfo("这个归档位置还没有本地状态记录，请先完成至少一个归档批次。")
+            return
+        try:
+            preview = get_removal_preview(
+                state_path,
+                target,
+                max_items=DEFAULT_REMOVAL_ITEMS,
+                max_bytes=DEFAULT_REMOVAL_BYTES,
+            )
+        except Exception as exc:
+            logging.exception("读取归档清理预览失败")
+            self.setWarninginfo(f"暂时不能清理源文件：{exc}")
+            return
+        if preview.get("batch_items", 0) <= 0:
+            self.setWarninginfo(
+                "目前没有可安全清理的源文件。请先继续归档，并等待 iCloud 完成上传。"
+            )
+            return
+        if not self.show_archive_removal_confirmation(preview):
+            self.setWarninginfo("已取消清理，源文件保持不变。")
+            return
+        self.start_archive_worker([], options, operation="remove")
+
+    def start_archive_worker(self, sources, options, operation="archive"):
+        target = options["target"]
+        manifest_path = archive_manifest_path(target)
+        batch_bytes = max(int(options["batch_mb"]), 1) * 1024 * 1024
+        self.archive_worker = ArchiveWorker(
+            manifest_path,
+            target,
+            operation,
+            sources=sources,
+            batch_bytes=batch_bytes,
+        )
+        self.archive_worker.progress.connect(self.archive_progress)
+        self.archive_worker.finished_ok.connect(self.archive_done)
+        self.archive_worker.failed.connect(self.archive_failed)
+        self.bar_progress.setRange(0, 100)
+        self.bar_progress.setValue(0)
+        if operation == "remove":
+            self.setWarninginfo("正在逐个复核并移入废纸篓，请勿退出应用…")
+        else:
+            self.setSuccessinfo("正在去重、整理并校验一个归档批次，请稍候…")
+        self.archive_worker.start()
+
+    def archive_progress(self, percent, message):
+        self.bar_progress.setRange(0, 100)
+        self.bar_progress.setValue(percent)
+        self.setSuccessinfo(message)
+
+    def archive_done(self, result):
+        summary = result.get("summary", {})
+        if result.get("operation") == "remove":
+            removal = result.get("removal", {})
+            message = (
+                f"本批清理完成：{removal.get('removed', 0)} 个源文件已移入废纸篓，"
+                f"{removal.get('changed', 0)} 个因内容变化而保留，"
+                f"{removal.get('failed', 0)} 个处理失败。\n"
+                f"仍有 {summary.get('ready_to_remove', 0)} 个已确认项目可在下次小批量处理。"
+            )
+            if removal.get("unconfirmed", 0):
+                message += (
+                    f"\n另有 {removal.get('unconfirmed', 0)} 个项目在废纸篓操作后"
+                    "状态未能完全确认，请查看日志与本地状态库。"
+                )
+        else:
+            batch = result.get("batch", {})
+            message = (
+                f"本批归档完成：复制 {batch.get('copied', 0)} 个唯一文件，"
+                f"识别 {batch.get('duplicates', 0)} 个重复副本；微信源文件未移动。\n"
+                f"仍待上传 {summary.get('awaiting_upload', 0)} 个，"
+                f"已有 {summary.get('ready_to_remove', 0)} 个通过校验并等待单独清理确认，"
+                f"仍待后续批次或重试 {summary.get('pending', 0)} 个。\n"
+                "再次打开“归档与迁移”可继续下一批，或单独清理已确认项目。"
+            )
+        self.setSuccessinfo(message)
+        self.bar_progress.setValue(100)
+        logging.info("归档批次完成：%s", result)
+
+    def archive_failed(self, details):
+        logging.error("归档批次失败：\n%s", details)
+        last_line = details.strip().splitlines()[-1] if details.strip() else "未知错误"
+        self.setWarninginfo(
+            f"归档任务已停止：{last_line}\n"
+            "已完成项目已写入本地事务状态，程序不会自动继续清理。详情请查看 cleanmywechat.log。"
+        )
+        self.bar_progress.setRange(0, 100)
+        self.bar_progress.setValue(0)
+
     def should_run_auto_clean(self, config):
         global_config = config.get("global", {})
         if not global_config.get("auto_clean_enable", False):
@@ -1789,11 +2362,12 @@ class MainWindow(Window):
         except Exception:
             return True
 
-    def justdoit(self, auto_mode=False):
+    def justdoit(self, auto_mode=False, archive_mode=False, archive_options=None):
         self.config = load_config_file()
         apply_startup_setting(self.config)
         need_clean = False
         self.thread_list = []
+        archive_sources = []
         self.scan_tick = 0
         self.bar_progress.setRange(0, 0)
         self.setSuccessinfo("正在扫描微信文件，请稍候...")
@@ -1829,15 +2403,35 @@ class MainWindow(Window):
                 total_file += len(file_list)
                 total_dir += len(dir_list)
                 self.merge_stats(total_stats, stats)
-                direct_delete = self.config.get("global", {}).get("direct_delete", False)
-                thread = multiDeleteThread(file_list, dir_list, share_thread_arr, direct_delete=direct_delete)
-                thread.delete_process_signal.connect(self.callback)
-                self.thread_list.append(thread)
+                if archive_mode:
+                    account_dir = value.get("data_dir")
+                    if not account_dir and i < len(self.config.get("data_dir", [])):
+                        account_dir = self.config["data_dir"][i]
+                    account_id = value.get("wechat_id")
+                    archive_sources.extend(
+                        {
+                            "path": path,
+                            "account_root": account_dir,
+                            "account_id": account_id,
+                        }
+                        for path in file_list + dir_list
+                    )
+                else:
+                    direct_delete = self.config.get("global", {}).get("direct_delete", False)
+                    thread = multiDeleteThread(
+                        file_list,
+                        dir_list,
+                        share_thread_arr,
+                        direct_delete=direct_delete,
+                    )
+                    thread.delete_process_signal.connect(self.callback)
+                    self.thread_list.append(thread)
 
         if not need_clean:
             self.bar_progress.setRange(0, 100)
             self.bar_progress.setValue(0)
-            self.setWarninginfo("没有需要清理的文件")
+            message = "没有需要归档的文件" if archive_mode else "没有需要清理的文件"
+            self.setWarninginfo(message)
         else:
             self.total_file = total_file
             self.total_dir = total_dir
@@ -1845,10 +2439,21 @@ class MainWindow(Window):
             self.bar_progress.setRange(0, 100)
             self.bar_progress.setValue(0)
             if not auto_mode or self.config.get("global", {}).get("auto_clean_confirm", True):
-                if not self.show_preview_dialog(total_stats, detail_lines):
-                    self.setWarninginfo("已取消清理，未移动任何文件。")
+                if not self.show_preview_dialog(
+                    total_stats,
+                    detail_lines,
+                    archive_mode=archive_mode,
+                ):
+                    action = "归档" if archive_mode else "清理"
+                    self.setWarninginfo(f"已取消{action}，未移动任何文件。")
                     self.thread_list = []
                     return
+            if archive_mode:
+                if not archive_options:
+                    self.setWarninginfo("缺少归档设置，未移动任何文件。")
+                    return
+                self.start_archive_worker(archive_sources, archive_options)
+                return
             self.setSuccessinfo("正在清理中，请稍候...")
             # 真正启动 QThread，并保存线程对象，避免界面卡死和线程被回收。
             for thread in self.thread_list:
@@ -1931,6 +2536,7 @@ class MainWindow(Window):
         self.setWindowIcon(app_icon())
 
         self._frame()
+        self.install_archive_action()
         self._eventfilter()
         if hasattr(self, "table_files"):
             self.init_table()
@@ -1940,6 +2546,7 @@ class MainWindow(Window):
         self.doFadeIn()
         self.config_exists = True
         self.thread_list = []
+        self.archive_worker = None
         self.auto_clean_running = False
         ensure_whitelist_file()
         self.show()
@@ -1989,11 +2596,18 @@ def check_full_disk_access():
         )
         msg.setStandardButtons(QMessageBox.Open | QMessageBox.Ignore)
         msg.setDefaultButton(QMessageBox.Open)
+        ignore_button = msg.button(QMessageBox.Ignore)
+        if ignore_button:
+            ignore_button.setText("暂时忽略并继续")
         btn = msg.exec_()
         if btn == QMessageBox.Open:
             QDesktopServices.openUrl(QUrl("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"))
-        return False
+            logging.warning("缺少完全磁盘访问权限，已打开系统设置")
+            return False
+        logging.warning("用户选择在缺少完全磁盘访问权限时继续启动")
+        return btn == QMessageBox.Ignore
     except OSError:
+        logging.exception("检查完全磁盘访问权限失败，继续启动")
         return True
 
 
