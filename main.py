@@ -1067,13 +1067,15 @@ class MainWindow(Window):
         self.total_size = 0
 
         share_thread_arr = [0]
-        direct_delete = load_config_file().get("global", {}).get("direct_delete", False)
-        thread = multiDeleteThread(selected_files, selected_dirs, share_thread_arr, direct_delete=direct_delete)
+        self.delete_result_stats = [0, 0]
+        self.config = load_config_file()
+        direct_delete = self.config.get("global", {}).get("direct_delete", False)
+        thread = multiDeleteThread(
+            selected_files, selected_dirs, share_thread_arr,
+            direct_delete=direct_delete, result_stats=self.delete_result_stats)
         thread.delete_process_signal.connect(self.callback)
         self.thread_list.append(thread)
         thread.start()
-
-        self.remove_deleted_rows(selected_files, selected_dirs)
 
     def remove_deleted_rows(self, deleted_files, deleted_dirs):
         deleted = set(deleted_files + deleted_dirs)
@@ -1730,15 +1732,28 @@ class MainWindow(Window):
         self.bar_progress.setValue(int(value))
         if value >= 100:
             direct_delete = self.config.get("global", {}).get("direct_delete", False)
-            final_tip = "文件已直接删除。" if direct_delete else "请前往回收站检查并清空。"
-            out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(
-                self.total_dir) + "个，预计释放空间" + format_size(getattr(self, 'total_size', 0)) + "。\n" + final_tip
-            self.setSuccessinfo(out)
+            succeeded, failed = getattr(self, "delete_result_stats", [0, 0])
+            if failed:
+                mode_tip = "直接删除" if direct_delete else "移动到回收站"
+                out = (
+                    f"处理完成：成功 {succeeded} 个，失败 {failed} 个；"
+                    f"候选空间 {format_size(getattr(self, 'total_size', 0))}。\n"
+                    f"失败项未被{mode_tip}。请退出微信后重试，详情见 cleanmywechat.log。"
+                )
+                self.setWarninginfo(out)
+            else:
+                final_tip = "文件已直接删除。" if direct_delete else "请前往回收站检查并清空。"
+                out = (
+                    f"本次成功清理 {succeeded} 个文件/文件夹，"
+                    f"预计释放空间 {format_size(getattr(self, 'total_size', 0))}。\n{final_tip}"
+                )
+                self.setSuccessinfo(out)
             self.thread_list = []
-            if getattr(self, "auto_clean_running", False):
+            if getattr(self, "auto_clean_running", False) and failed == 0:
                 state = load_json(STATE_PATH, {})
                 state["last_auto_clean"] = datetime.datetime.now().strftime("%Y-%m-%d")
                 save_json(STATE_PATH, state)
+            if getattr(self, "auto_clean_running", False):
                 self.auto_clean_running = False
             return
 
@@ -1774,6 +1789,7 @@ class MainWindow(Window):
         total_stats = self.make_empty_stats()
         detail_lines = []
         share_thread_arr = [0]
+        self.delete_result_stats = [0, 0]
         system_cache_added = False
 
         for i, value in enumerate(self.config.get("users", [])):
@@ -1801,7 +1817,9 @@ class MainWindow(Window):
                 total_dir += len(dir_list)
                 self.merge_stats(total_stats, stats)
                 direct_delete = self.config.get("global", {}).get("direct_delete", False)
-                thread = multiDeleteThread(file_list, dir_list, share_thread_arr, direct_delete=direct_delete)
+                thread = multiDeleteThread(
+                    file_list, dir_list, share_thread_arr,
+                    direct_delete=direct_delete, result_stats=self.delete_result_stats)
                 thread.delete_process_signal.connect(self.callback)
                 self.thread_list.append(thread)
 

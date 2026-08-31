@@ -3,7 +3,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import main
 from utils.cleanup_rules import build_account_scan_dirs, retention_cutoff
@@ -110,6 +110,25 @@ class CleanupScanningTest(unittest.TestCase):
 
         self.assertEqual([], migrated["users"][0]["whitelist_exts"])
         self.assertEqual(2, migrated["global"]["config_schema_version"])
+
+    def test_cleanup_summary_reports_failed_items(self):
+        window = main.MainWindow.__new__(main.MainWindow)
+        window.bar_progress = MagicMock()
+        window.config = {"global": {"direct_delete": True}}
+        window.total_file = 2
+        window.total_dir = 0
+        window.total_size = 1024
+        window.delete_result_stats = [1, 1]
+        window.thread_list = [object()]
+        window.auto_clean_running = False
+        window.setWarninginfo = MagicMock()
+        window.setSuccessinfo = MagicMock()
+
+        window.callback(2)
+
+        message = window.setWarninginfo.call_args.args[0]
+        self.assertIn("成功 1 个，失败 1 个", message)
+        window.setSuccessinfo.assert_not_called()
 
 
 if __name__ == "__main__":
