@@ -1,6 +1,14 @@
-import os, datetime, re
-from pathlib import Path
+import datetime
+import os
 from PyQt5.QtCore import QThread, pyqtSignal, QMutex
+
+from utils.cleanup_rules import (
+    PROTECTED_DIR_NAMES,
+    build_account_scan_dirs,
+    is_path_expired,
+    is_protected_path,
+    retention_cutoff,
+)
 
 
 class ScanThread(QThread):
@@ -46,109 +54,79 @@ class ScanThread(QThread):
             pass
         return 0
 
-    def get_fileNum(self, path, day, picCacheCheck, fileCheck, picCheck, videoCheck, file_list, dir_list):
+    def get_fileNum(self, path, day, picCacheCheck, fileCheck, picCheck,
+                    videoCheck, file_list, dir_list, user_config=None):
         if not self.is_running:
             return
-        
-        dir_name = Path(path)
-        correct_path = Path(dir_name)
-        now = datetime.datetime.now()
-        
-        if picCacheCheck:
-            path_one = correct_path / 'Attachment'
-            path_two = correct_path / 'FileStorage/Cache'
-            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
-        
-        if fileCheck:
-            path_one = correct_path / 'Files'
-            path_two = correct_path / 'FileStorage/File'
-            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
-        
-        if picCheck:
-            path_one = correct_path / 'Image/Image'
-            path_two = correct_path / 'FileStorage/Image'
-            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
-        
-        if videoCheck:
-            path_one = correct_path / 'Video'
-            path_two = correct_path / 'FileStorage/Video'
-            self.getPathFileNum(now, day, path_one, path_two, file_list, dir_list)
+        user_config = user_config or {}
+        include_msg_attach = user_config.get('clean_msg_attach', True)
+        seen = set(file_list)
+        for scan_path, category in build_account_scan_dirs(
+                path, picCacheCheck, fileCheck, picCheck, videoCheck,
+                include_msg_attach=include_msg_attach):
+            self.pathFileDeal(
+                day, scan_path, file_list, dir_list, seen=seen,
+                user_config=user_config, category=category)
 
-    def pathFileDeal(self, now, day, path, file_list, dir_list):
+    def pathFileDeal(self, day, path, file_list, dir_list, seen=None,
+                     user_config=None, category='file'):
         if not self.is_running:
             return
-        
-        if os.path.exists(path):
-            filelist = [
-                f for f in os.listdir(path)
-                if os.path.isfile(os.path.join(path, f))
-            ]
-            for i in range(0, len(filelist)):
+        if not os.path.isdir(path):
+            return
+        seen = seen if seen is not None else set(file_list)
+        user_config = user_config or {}
+        whitelist_exts = {
+            str(ext).lower() if str(ext).startswith('.') else '.' + str(ext).lower()
+            for ext in user_config.get('whitelist_exts', [])
+            if ext
+        }
+        whitelist_paths = [
+            os.path.normcase(os.path.abspath(os.path.expandvars(str(item))))
+            for item in user_config.get('whitelist_paths', [])
+            if item
+        ]
+        cutoff = retention_cutoff(datetime.datetime.now(), day)
+        try:
+            for root, dirs, files in os.walk(path):
                 if not self.is_running:
                     return
-                
-                file_path = os.path.join(path, filelist[i])
-                if os.path.isdir(file_path):
+                dirs[:] = [d for d in dirs if d.lower() not in PROTECTED_DIR_NAMES]
+                root_key = os.path.normcase(os.path.abspath(root))
+                if user_config.get('use_whitelist', True) and any(
+                        root_key == item or root_key.startswith(item + os.sep)
+                        for item in whitelist_paths):
+                    dirs[:] = []
                     continue
-                
-                try:
-                    timestamp = datetime.datetime.fromtimestamp(
-                        os.path.getmtime(file_path))
-                    diff = (now - timestamp).days
-                    if diff >= day:
-                        file_list.append(file_path)
-                        file_size = self.get_file_size(file_path)
-                        file_size_str = self.get_file_size_str(file_size)
-                        self.scan_file_found_signal.emit(file_path, file_size_str, "file")
-                except Exception as e:
-                    print(f"Error processing file {file_path}: {e}")
-                    continue
+                for filename in files:
+                    if not self.is_running:
+                        return
+                    file_path = os.path.join(root, filename)
+                    ext = os.path.splitext(filename)[1].lower()
+                    file_key = os.path.normcase(os.path.abspath(file_path))
+                    if file_path in seen or is_protected_path(file_path):
+                        continue
+                    if user_config.get('use_whitelist', True):
+                        if ext in whitelist_exts:
+                            continue
+                        if any(file_key == item or file_key.startswith(item + os.sep)
+                               for item in whitelist_paths):
+                            continue
+                    if not is_path_expired(file_path, cutoff):
+                        continue
+                    seen.add(file_path)
+                    file_list.append(file_path)
+                    file_size = self.get_file_size(file_path)
+                    self.scan_file_found_signal.emit(
+                        file_path, self.get_file_size_str(file_size), "file")
+        except OSError as exc:
+            self.scan_error_signal.emit(f"扫描目录失败 {path}: {exc}")
 
     def getPathFileNum(self, now, day, path_one, path_two, file_list, dir_list):
-        if not self.is_running:
-            return
-        
-        self.pathFileDeal(now, day, path_one, file_list, dir_list)
-        
-        td = datetime.datetime.now() - datetime.timedelta(days=day)
-        td_year = td.year
-        td_month = td.month
-        
-        if os.path.exists(path_two):
-            osdir = os.listdir(path_two)
-            dirlist = []
-            for i in range(0, len(osdir)):
-                file_path = os.path.join(path_two, osdir[i])
-                if os.path.isdir(file_path):
-                    dirlist.append(osdir[i])
-            
-            for i in range(0, len(dirlist)):
-                if not self.is_running:
-                    return
-                
-                file_path = os.path.join(path_two, dirlist[i])
-                if os.path.isfile(file_path):
-                    continue
-                
-                if re.match(r'\d{4}-\d{2}', dirlist[i]) != None:
-                    cyear = int(dirlist[i].split('-', 1)[0])
-                    cmonth = int(dirlist[i].split('-', 1)[1])
-                    if self.__before_deadline(cyear, cmonth, td_year, td_month):
-                        dir_list.append(file_path)
-                        file_size = self.get_file_size(file_path)
-                        file_size_str = self.get_file_size_str(file_size)
-                        self.scan_file_found_signal.emit(file_path, file_size_str, "dir")
-                    else:
-                        if cmonth == td_month:
-                            self.pathFileDeal(now, day, file_path, file_list, dir_list)
-
-    def __before_deadline(self, cyear, cmonth, td_year, td_month):
-        if cyear < td_year:
-            return True
-        elif cyear > td_year:
-            return False
-        elif cyear == td_year:
-            return cmonth < td_month
+        # 兼容旧调用；现在统一递归并按单个文件的时间判断。
+        seen = set(file_list)
+        self.pathFileDeal(day, path_one, file_list, dir_list, seen=seen)
+        self.pathFileDeal(day, path_two, file_list, dir_list, seen=seen)
 
     def run(self):
         try:
@@ -156,22 +134,30 @@ class ScanThread(QThread):
             dir_list = []
             
             i = 0
-            total_users = len(self.config["users"])
+            users = self.config.get("users", [])
+            total_users = len(users)
+            if total_users == 0:
+                self.scan_finished_signal.emit(0, 0)
+                return
             
-            for value in self.config["users"]:
+            for value in users:
                 if not self.is_running:
                     break
                 
                 if value["is_clean"]:
+                    account_path = value.get("data_dir")
+                    if not account_path and i < len(self.config.get("data_dir", [])):
+                        account_path = self.config["data_dir"][i]
                     self.get_fileNum(
-                        self.config["data_dir"][i],
-                        int(value["clean_days"]),
-                        value["clean_pic_cache"], 
-                        value["clean_file"],
-                        value["clean_pic"], 
-                        value["clean_video"],
+                        account_path,
+                        int(value.get("clean_days", 365)),
+                        value.get("clean_pic_cache", True),
+                        value.get("clean_file", False),
+                        value.get("clean_pic", True),
+                        value.get("clean_video", True),
                         file_list, 
-                        dir_list
+                        dir_list,
+                        user_config=value,
                     )
                 
                 progress = int((i + 1) / total_users * 100)

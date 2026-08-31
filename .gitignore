@@ -6,6 +6,7 @@ dist/
 *.pyc
 **__pycache__**
 cleanmywechat.log
+cleanmywechat_startup_crash.log
 whitelist.txt
 last_scan_preview.txt
 clean_state.json
