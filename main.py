@@ -69,6 +69,7 @@ from utils.selectVersion import *
 from utils.selectVersion import check_dir, existing_user_config, find_all_wechat_paths, get_dir_name, \
     is_wechat_like_account_dir, request_macos_private_data_access
 from utils.scanThread import ScanThread
+from utils.cleanup_rules import build_account_scan_dirs, is_path_expired, retention_cutoff
 # 设置应用程序在高DPI屏幕上启用高DPI缩放。Set the application to enable high DPI scaling on high DPI screens
 # 注意事项：此行代码必须在QApplication实例化之前调用，否则会调用失败。Notes: This line of code must be called before the instantiation of the QApplication object; otherwise, it will fail
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
@@ -157,7 +158,13 @@ DEFAULT_GLOBAL_CONFIG = {
     "auto_clean_confirm": True,
     "run_at_startup": False,
     "startup_clean_cache_only": False,
-    "direct_delete": False
+    "direct_delete": False,
+    "config_schema_version": 2
+}
+
+LEGACY_DEFAULT_WHITELIST_EXTS = {
+    ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".pdf",
+    ".dll", ".exe", ".msi", ".sys", ".ocx", ".pyd", ".pak"
 }
 
 LEGACY_GLOBAL_CONFIG_KEYS = (
@@ -176,13 +183,11 @@ DEFAULT_USER_EXTRA = {
     "clean_web_cache": True,
     "clean_miniprogram_cache": True,
     "clean_wxwork_cache": True,
-    # 白名单默认开启，重要办公文件默认不清理，降低误删风险。
+    # 白名单默认开启，但只保护用户明确配置的路径或扩展名。
+    # 数据库和程序组件由 SAFE_SKIP_EXTS 独立保护。
     "use_whitelist": True,
     "whitelist_paths": [],
-    "whitelist_exts": [
-        ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".pdf",
-        ".dll", ".exe", ".msi", ".sys", ".ocx", ".pyd", ".pak"
-    ],
+    "whitelist_exts": [],
     # 文件类型细分，用户可以在 config.json 中精确控制。
     "clean_ext_groups": {
         "image": True,
@@ -281,6 +286,10 @@ def ensure_config_defaults(config):
     config.setdefault("data_dir", [])
     config.setdefault("users", [])
     global_config = config.setdefault("global", {})
+    try:
+        old_schema_version = int(global_config.get("config_schema_version", 1))
+    except (TypeError, ValueError):
+        old_schema_version = 1
     for key, value in DEFAULT_GLOBAL_CONFIG.items():
         global_config.setdefault(key, value)
     for key in LEGACY_GLOBAL_CONFIG_KEYS:
@@ -299,6 +308,13 @@ def ensure_config_defaults(config):
         # 账号和目录直接绑定，保留旧 data_dir 列表只是为了兼容旧版本。
         if "data_dir" not in user and index < len(config.get("data_dir", [])):
             user["data_dir"] = config["data_dir"][index]
+        if old_schema_version < 2:
+            configured_exts = {
+                normalize_ext(ext) for ext in user.get("whitelist_exts", [])
+            }
+            if configured_exts == LEGACY_DEFAULT_WHITELIST_EXTS:
+                # 旧版自动写入的 Office/PDF 白名单与“收到的文档”选项冲突。
+                user["whitelist_exts"] = []
     valid_users = []
     valid_data_dirs = []
     for user in config.get("users", []):
@@ -1051,13 +1067,15 @@ class MainWindow(Window):
         self.total_size = 0
 
         share_thread_arr = [0]
-        direct_delete = load_config_file().get("global", {}).get("direct_delete", False)
-        thread = multiDeleteThread(selected_files, selected_dirs, share_thread_arr, direct_delete=direct_delete)
+        self.delete_result_stats = [0, 0]
+        self.config = load_config_file()
+        direct_delete = self.config.get("global", {}).get("direct_delete", False)
+        thread = multiDeleteThread(
+            selected_files, selected_dirs, share_thread_arr,
+            direct_delete=direct_delete, result_stats=self.delete_result_stats)
         thread.delete_process_signal.connect(self.callback)
         self.thread_list.append(thread)
         thread.start()
-
-        self.remove_deleted_rows(selected_files, selected_dirs)
 
     def remove_deleted_rows(self, deleted_files, deleted_dirs):
         deleted = set(deleted_files + deleted_dirs)
@@ -1137,9 +1155,7 @@ class MainWindow(Window):
                 return
             if user_config.get("use_whitelist", True) and self.is_in_whitelist(file_path, whitelist_paths, whitelist_exts):
                 return
-            timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-            diff = (now - timestamp).days
-            if diff < day:
+            if not is_path_expired(file_path, retention_cutoff(now, day)):
                 return
             real_category = get_file_type(file_path, category)
             # 日志、网页缓存这类路径即使扩展名普通，也归入缓存，方便用户理解。
@@ -1228,7 +1244,6 @@ class MainWindow(Window):
         if not root_path or not os.path.exists(root_path):
             return
         try:
-            allow_month_dirs = self.allow_month_dir_cleanup(root_path, category)
             for root, dirs, files in os.walk(root_path):
                 # 程序组件目录不递归，防止把运行库和插件误当成缓存。
                 dirs[:] = [d for d in dirs if d.lower() not in PROTECTED_DIR_NAMES]
@@ -1242,14 +1257,6 @@ class MainWindow(Window):
                 if skip_root:
                     dirs[:] = []
                     continue
-                dirs_to_skip = []
-                if allow_month_dirs:
-                    for dirname in list(dirs):
-                        dir_path = os.path.join(root, dirname)
-                        if self.add_month_dir_if_expired(dir_path, dirname, now, day, category, dir_list, dir_set, stats, detail_lines, user_config, whitelist_paths):
-                            dirs_to_skip.append(dirname)
-                if dirs_to_skip:
-                    dirs[:] = [d for d in dirs if d not in dirs_to_skip]
                 for filename in files:
                     file_path = os.path.join(root, filename)
                     self.add_file_if_match(file_path, now, day, category, file_list, file_set, stats, detail_lines, user_config, whitelist_paths, whitelist_exts)
@@ -1259,9 +1266,8 @@ class MainWindow(Window):
                     dir_path = os.path.join(root, dirname)
                     try:
                         if not os.listdir(dir_path):
-                            timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(dir_path))
-                            diff = (now - timestamp).days
-                            if diff >= day and dir_path not in dir_set:
+                            cutoff = retention_cutoff(now, day)
+                            if is_path_expired(dir_path, cutoff) and dir_path not in dir_set:
                                 if not self.category_enabled(user_config, dir_path, category, category):
                                     continue
                                 dir_set.add(dir_path)
@@ -1387,19 +1393,9 @@ class MainWindow(Window):
         client_type = user_config.get("client_type") or detect_client_type(str(correct_path))
         whitelist_paths, whitelist_exts = self.build_whitelist(user_config)
 
-        scan_dirs = []
-        if picCacheCheck:
-            scan_dirs.append((correct_path / 'Attachment', 'cache'))
-            scan_dirs.append((correct_path / 'FileStorage/Cache', 'cache'))
-        if fileCheck:
-            scan_dirs.append((correct_path / 'Files', 'file'))
-            scan_dirs.append((correct_path / 'FileStorage/File', 'file'))
-        if picCheck:
-            scan_dirs.append((correct_path / 'Image/Image', 'image'))
-            scan_dirs.append((correct_path / 'FileStorage/Image', 'image'))
-        if videoCheck:
-            scan_dirs.append((correct_path / 'Video', 'video'))
-            scan_dirs.append((correct_path / 'FileStorage/Video', 'video'))
+        scan_dirs = build_account_scan_dirs(
+            correct_path, picCacheCheck, fileCheck, picCheck, videoCheck,
+            include_msg_attach=user_config.get("clean_msg_attach", True))
 
         if client_type == "wxwork" and user_config.get("clean_wxwork_cache", True):
             # 企业微信常见目录，部分版本会把文件、图片、语音按月份放在 Cache 下。
@@ -1416,29 +1412,6 @@ class MainWindow(Window):
             if videoCheck:
                 scan_dirs.append((correct_path / 'Video', 'video'))
                 scan_dirs.append((correct_path / 'Videos', 'video'))
-
-        if 'xwechat_files' in str(correct_path).lower():
-            if picCacheCheck:
-                scan_dirs.append((correct_path / 'cache', 'cache'))
-                scan_dirs.append((correct_path / 'temp', 'cache'))
-                scan_dirs.append((correct_path / 'apm_record', 'cache'))
-                scan_dirs.append((correct_path / 'business' / 'InputTemp', 'cache'))
-                scan_dirs.append((correct_path / 'business' / 'emoticon' / 'Temp', 'cache'))
-                scan_dirs.append((correct_path / 'business' / 'emoticon' / 'Thumb', 'cache'))
-                scan_dirs.append((correct_path / 'business' / 'xweb', 'cache'))
-            if fileCheck:
-                scan_dirs.append((correct_path / 'msg' / 'file', 'file'))
-                scan_dirs.append((correct_path / 'msg' / 'attach', 'file'))
-                scan_dirs.append((correct_path / 'business' / 'favorite', 'file'))
-            if videoCheck:
-                scan_dirs.append((correct_path / 'msg' / 'video', 'video'))
-
-        # 新版微信 4.x 常见附件目录，里面可能混合图片、视频和普通文件，实际分类按扩展名判断。
-        if user_config.get("clean_msg_attach", True):
-            scan_dirs.append((correct_path / 'FileStorage/MsgAttach', 'file'))
-            scan_dirs.append((correct_path / 'MsgAttach', 'file'))
-            scan_dirs.append((correct_path / 'msg/attach', 'file'))
-            scan_dirs.append((correct_path / 'xwechat_files', 'file'))
 
         if picCacheCheck and user_config.get("clean_miniprogram_cache", True):
             scan_dirs.extend(self.get_miniprogram_dirs(str(correct_path)))
@@ -1759,15 +1732,28 @@ class MainWindow(Window):
         self.bar_progress.setValue(int(value))
         if value >= 100:
             direct_delete = self.config.get("global", {}).get("direct_delete", False)
-            final_tip = "文件已直接删除。" if direct_delete else "请前往回收站检查并清空。"
-            out = "本次共清理文件" + str(self.total_file) + "个，文件夹" + str(
-                self.total_dir) + "个，预计释放空间" + format_size(getattr(self, 'total_size', 0)) + "。\n" + final_tip
-            self.setSuccessinfo(out)
+            succeeded, failed = getattr(self, "delete_result_stats", [0, 0])
+            if failed:
+                mode_tip = "直接删除" if direct_delete else "移动到回收站"
+                out = (
+                    f"处理完成：成功 {succeeded} 个，失败 {failed} 个；"
+                    f"候选空间 {format_size(getattr(self, 'total_size', 0))}。\n"
+                    f"失败项未被{mode_tip}。请退出微信后重试，详情见 cleanmywechat.log。"
+                )
+                self.setWarninginfo(out)
+            else:
+                final_tip = "文件已直接删除。" if direct_delete else "请前往回收站检查并清空。"
+                out = (
+                    f"本次成功清理 {succeeded} 个文件/文件夹，"
+                    f"预计释放空间 {format_size(getattr(self, 'total_size', 0))}。\n{final_tip}"
+                )
+                self.setSuccessinfo(out)
             self.thread_list = []
-            if getattr(self, "auto_clean_running", False):
+            if getattr(self, "auto_clean_running", False) and failed == 0:
                 state = load_json(STATE_PATH, {})
                 state["last_auto_clean"] = datetime.datetime.now().strftime("%Y-%m-%d")
                 save_json(STATE_PATH, state)
+            if getattr(self, "auto_clean_running", False):
                 self.auto_clean_running = False
             return
 
@@ -1803,6 +1789,7 @@ class MainWindow(Window):
         total_stats = self.make_empty_stats()
         detail_lines = []
         share_thread_arr = [0]
+        self.delete_result_stats = [0, 0]
         system_cache_added = False
 
         for i, value in enumerate(self.config.get("users", [])):
@@ -1830,7 +1817,9 @@ class MainWindow(Window):
                 total_dir += len(dir_list)
                 self.merge_stats(total_stats, stats)
                 direct_delete = self.config.get("global", {}).get("direct_delete", False)
-                thread = multiDeleteThread(file_list, dir_list, share_thread_arr, direct_delete=direct_delete)
+                thread = multiDeleteThread(
+                    file_list, dir_list, share_thread_arr,
+                    direct_delete=direct_delete, result_stats=self.delete_result_stats)
                 thread.delete_process_signal.connect(self.callback)
                 self.thread_list.append(thread)
 
